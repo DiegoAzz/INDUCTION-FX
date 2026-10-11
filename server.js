@@ -610,13 +610,19 @@ io.on('connection', (socket) => {
       return;
     }
 
-    console.log(`[Induction] Funcionario "${data.name}" se unió a: ${company.name} (${companyId})`);
-    socket.join(companyId);
+    console.log(`[Induction] Intento de conexión en ${company.name}: ${data.email || data.name}`);
 
-    const email = data.email || `${(data.name || 'user').replace(/\s+/g, '.').toLowerCase()}@${company.id}.com`;
+    const email = (data.email || '').toLowerCase().trim();
+    const existingEmp = (company.employees && company.employees[email]) || null;
 
-    const existingEmp = company.employees && company.employees[email.toLowerCase()];
-    if (existingEmp && existingEmp.status === 'TERMINATED') {
+    if (!existingEmp) {
+      socket.emit('player:error', {
+        error: 'Funcionario no registrado en la nómina de esta empresa. Solicita a RRHH que te registre en el Dashboard.'
+      });
+      return;
+    }
+
+    if (existingEmp.status === 'TERMINATED') {
       socket.emit('player:expelled', {
         type: 'DESPIDO',
         reason: existingEmp.terminationReason || 'Contrato laboral finalizado',
@@ -625,30 +631,30 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const empSuitColor = (existingEmp && (existingEmp.suitColor || existingEmp.color)) || data.suitColor || data.color || '#1e3a8a';
-    const empTieColor = (existingEmp && existingEmp.tieColor) || data.tieColor || '#dc2626';
-    const empGender = (existingEmp && existingEmp.gender) || data.gender || ((data.avatarStyle === 'executive_female' || (data.name && data.name.toLowerCase().endsWith('a'))) ? 'female' : 'male');
-    const empAvatarStyle = (existingEmp && existingEmp.avatarStyle) || data.avatarStyle || (empGender === 'female' ? 'executive_female' : 'executive_male');
+    if (existingEmp.status === 'SUSPENDED') {
+      socket.emit('player:error', {
+        error: 'Tu usuario se encuentra en suspensión temporal. Comunícate con Recursos Humanos.'
+      });
+      return;
+    }
 
-    const employee = await dbManager.createEmployee(companyId, {
-      name: data.name,
-      email: email,
-      role: data.role || (existingEmp && existingEmp.role) || 'Nuevo Ingreso',
-      department: data.department || (existingEmp && existingEmp.department) || 'General',
-      color: empSuitColor,
-      suitColor: empSuitColor,
-      tieColor: empTieColor,
-      gender: empGender,
-      avatarStyle: empAvatarStyle
-    });
+    socket.join(companyId);
+
+    const empName = existingEmp.name;
+    const empRole = existingEmp.role || 'Funcionario';
+    const empDept = existingEmp.department || 'General';
+    const empSuitColor = existingEmp.suitColor || existingEmp.color || '#1e3a8a';
+    const empTieColor = existingEmp.tieColor || '#dc2626';
+    const empGender = existingEmp.gender || ((existingEmp.avatarStyle === 'executive_female' || empName.toLowerCase().endsWith('a')) ? 'female' : 'male');
+    const empAvatarStyle = existingEmp.avatarStyle || (empGender === 'female' ? 'executive_female' : 'executive_male');
 
     activePlayers[socket.id] = {
       id: socket.id,
       companyId: companyId,
-      name: data.name,
+      name: empName,
       email: email,
-      role: data.role || (existingEmp && existingEmp.role) || 'Funcionario',
-      department: data.department || (existingEmp && existingEmp.department) || 'General',
+      role: empRole,
+      department: empDept,
       color: empSuitColor,
       suitColor: empSuitColor,
       tieColor: empTieColor,
@@ -779,6 +785,10 @@ io.on('connection', (socket) => {
     const receiver = activePlayers[socket.id];
 
     if (receiver && activePlayers[targetSocketId]) {
+      // Marcar estado de llamada privada en el servidor
+      receiver.inPrivateCall = targetSocketId;
+      activePlayers[targetSocketId].inPrivateCall = socket.id;
+
       // Notificar a quien llamó que la llamada fue aceptada
       io.to(targetSocketId).emit('call:connected', {
         partnerId: socket.id,
@@ -790,6 +800,10 @@ io.on('connection', (socket) => {
         partnerId: targetSocketId,
         partnerName: activePlayers[targetSocketId].name
       });
+
+      // Notificar al resto de la oficina para aislar su audio
+      io.to(receiver.companyId).emit('player:call_state', { id: socket.id, inPrivateCall: true });
+      io.to(receiver.companyId).emit('player:call_state', { id: targetSocketId, inPrivateCall: true });
     }
   });
 
@@ -806,8 +820,15 @@ io.on('connection', (socket) => {
   // 4. Finalizar / Colgar llamada
   socket.on('call:hangup', (data) => {
     const partnerId = data.partnerId;
+    const player = activePlayers[socket.id];
+    if (player) player.inPrivateCall = null;
     if (activePlayers[partnerId]) {
+      activePlayers[partnerId].inPrivateCall = null;
       io.to(partnerId).emit('call:ended');
+    }
+    if (player) {
+      io.to(player.companyId).emit('player:call_state', { id: socket.id, inPrivateCall: false });
+      if (partnerId) io.to(player.companyId).emit('player:call_state', { id: partnerId, inPrivateCall: false });
     }
   });
 

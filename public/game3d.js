@@ -1727,6 +1727,14 @@ socket.on('call:connected', (data) => {
   playRadioBeep(true);
 });
 
+// Actualización de estado de llamada privada en la oficina
+socket.on('player:call_state', (data) => {
+  if (players[data.id]) {
+    players[data.id].inPrivateCall = data.inPrivateCall;
+    updateSpatialAudioVolumes();
+  }
+});
+
 // Colgar / Terminar Llamada
 hangupCallBtn.addEventListener('click', () => {
   if (activeCallPartnerId) {
@@ -1979,34 +1987,41 @@ function closePeerConnection(id) {
 function updateSpatialAudioVolumes() {
   if (!selfId || !players[selfId]) return;
   const me = players[selfId];
-  const maxDistance = 18; // Radio auditivo espacial natural de oficina
+  // Radio auditivo íntimo y privado de oficina: solo a quien esté justo al lado (< 5 metros)
+  const maxDistance = 5.0;
 
   for (const id in peerAudioElements) {
     const target = players[id];
     const audio = peerAudioElements[id];
     if (!target || !audio) continue;
 
-    // 1. Si están en llamada privada 1 a 1, volumen al 100% independiente de la distancia
+    // 1. LLAMADA PRIVADA EXCLUSIVA 1 A 1
+    // Si yo estoy en llamada con esta persona, canal directo al 100%
     if (activeCallPartnerId === id) {
       audio.volume = 1.0;
       continue;
     }
 
-    // 2. Aislamiento acústico de la Sala de Juntas (Privacidad acústica total)
-    // El área de la sala de juntas está en z < -13 y |x| < 12
-    const meInBoardroom = (me.z < -13 && Math.abs(me.x) < 12);
-    const targetInBoardroom = ((target.z || 0) < -13 && Math.abs(target.x || 0) < 12);
-
-    if (meInBoardroom !== targetInBoardroom) {
-      // Las paredes de cristal acústico aíslan la conversación de quienes estén afuera
+    // Si yo o el otro usuario estamos en una llamada privada con un tercero, NADIE MÁS nos escucha
+    if (activeCallPartnerId || target.inPrivateCall) {
       audio.volume = 0;
       continue;
     }
 
-    // 3. Audio por proximidad en espacio abierto (cercano y privado)
+    // 2. Aislamiento Acústico de la Sala de Juntas (Totalmente insonorizada)
+    const meInBoardroom = (me.z < -13 && Math.abs(me.x) < 12);
+    const targetInBoardroom = ((target.z || 0) < -13 && Math.abs(target.x || 0) < 12);
+
+    if (meInBoardroom !== targetInBoardroom) {
+      // Nadie afuera escucha lo que se habla dentro de la sala de juntas
+      audio.volume = 0;
+      continue;
+    }
+
+    // 3. Audio Espacial Íntimo (Solo se escucha si estás frente a frente con él)
     const dist = Math.hypot(me.x - target.x, (me.z || 0) - (target.z || 0));
     if (dist > maxDistance) {
-      audio.volume = 0;
+      audio.volume = 0; // Silencio absoluto si no estás pegado al compañero
     } else {
       audio.volume = Math.max(0, 1 - (dist / maxDistance));
     }
@@ -2271,6 +2286,7 @@ function animate() {
   lastTime = now;
 
   updatePlayerPhysics(delta);
+  updateSpatialAudioVolumes();
 
   // Animación idle suave de los NPCs
   npcMeshes.forEach(item => {
