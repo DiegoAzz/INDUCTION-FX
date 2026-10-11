@@ -97,7 +97,8 @@ scene.background = new THREE.Color(0x0f172a);
 scene.fog = new THREE.Fog(0x0f172a, 45, 120);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
-camera.position.set(0, 18, 22);
+camera.position.set(0, 14, 18);
+camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setSize(800, 600);
@@ -280,34 +281,30 @@ function buildNpcWorld(npcs) {
     body.castShadow = true;
     npcGroup.add(body);
 
-    // Retrato / Cara Real flotante del NPC (Sprite o Disco 3D con foto)
-    if (npc.avatarUrl) {
-      try {
-        const faceTexture = textureLoader.load(npc.avatarUrl);
-        const faceGeo = new THREE.CircleGeometry(0.7, 32);
-        const faceMat = new THREE.MeshBasicMaterial({ 
-          map: faceTexture, 
-          side: THREE.DoubleSide 
-        });
-        const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-        faceMesh.position.set(0, 2.7, 0.1);
-        npcGroup.add(faceMesh);
-      } catch (err) {
-        const head = new THREE.Mesh(
-          new THREE.SphereGeometry(0.6, 16, 16),
-          new THREE.MeshStandardMaterial({ color: 0xffedd5 })
-        );
-        head.position.y = 2.6;
-        npcGroup.add(head);
-      }
-    } else {
-      const head = new THREE.Mesh(
-        new THREE.SphereGeometry(0.6, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xffedd5 })
-      );
-      head.position.y = 2.6;
-      npcGroup.add(head);
-    }
+    // Cabeza estilizada 3D del NPC (Roblox Style)
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.62, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.5 })
+    );
+    head.position.y = 2.6;
+    head.castShadow = true;
+    npcGroup.add(head);
+
+    // Cabello / Peinado corporativo
+    const hair = new THREE.Mesh(
+      new THREE.SphereGeometry(0.64, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
+    );
+    hair.position.y = 2.65;
+    npcGroup.add(hair);
+
+    // Gafete corporativo en el pecho
+    const badge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.55, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+    );
+    badge.position.set(0, 1.4, 0.72);
+    npcGroup.add(badge);
 
     npcGroup.position.set(0, 0, -1.8);
     stationGroup.add(npcGroup);
@@ -509,11 +506,11 @@ if (toggleSidebarBtn && sidebar) {
 
 function handleResize() {
   const isMobile = window.innerWidth <= 768;
-  const width = canvasContainer.clientWidth || window.innerWidth;
-  const height = canvasContainer.clientHeight || window.innerHeight;
+  const rect = canvasContainer ? canvasContainer.getBoundingClientRect() : null;
+  const width = (rect && rect.width > 0) ? rect.width : (canvasContainer?.clientWidth || window.innerWidth);
+  const height = (rect && rect.height > 0) ? rect.height : (canvasContainer?.clientHeight || Math.max(window.innerHeight - 64, 300));
 
-  camera.aspect = width / height;
-  // En móviles, ajustar el campo de visión (FOV) para no recortar la escena
+  camera.aspect = width / Math.max(height, 1);
   camera.fov = isMobile ? 65 : 50;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
@@ -637,6 +634,8 @@ function loginPlayer(companyId, name, email, role, department, color) {
   gameContainer.classList.remove('hidden');
   displayEmployeeName.textContent = `${name} • ${role} (${department || 'General'})`;
   handleResize();
+  requestAnimationFrame(() => handleResize());
+  setTimeout(() => handleResize(), 150);
 }
 
 // Cerrar sesión
@@ -695,6 +694,11 @@ socket.on('office:init', (data) => {
   }
 
   handleResize();
+  if (selfId && playerMeshes[selfId]) {
+    const pMesh = playerMeshes[selfId];
+    camera.position.set(pMesh.position.x, pMesh.position.y + 14, pMesh.position.z + 18);
+    camera.lookAt(pMesh.position.x, 1.5, pMesh.position.z);
+  }
   if (!isAnimating) {
     isAnimating = true;
     animate();
@@ -1456,10 +1460,16 @@ function animate() {
 
   // Animación idle suave de los NPCs
   npcMeshes.forEach(item => {
-    item.npcModel.rotation.y = Math.sin(now * 0.002) * 0.12;
+    if (item && item.npcModel) {
+      item.npcModel.rotation.y = Math.sin(now * 0.002) * 0.12;
+    }
   });
 
-  renderer.render(scene, camera);
+  try {
+    renderer.render(scene, camera);
+  } catch (renderErr) {
+    console.error('Render error:', renderErr);
+  }
 }
 
 function updatePlayerPhysics(delta) {
