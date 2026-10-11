@@ -1,26 +1,27 @@
-FROM node:20-alpine
+FROM node:20-slim
 
-# Directorio de trabajo en el contenedor
+# Instalar OpenSSL requerido por Prisma
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias de producción
-RUN npm install --omit=dev
+# Instalar dependencias
+RUN npm install
 
-# Copiar el código de la aplicación
+# Copiar esquema de Prisma y código
+COPY prisma ./prisma/
+RUN npx prisma generate
+
 COPY . .
 
-# Generar cliente de Prisma para PostgreSQL
-RUN npx prisma generate || true
-
-# Puerto expuesto por defecto
+# Puerto expuesto
 EXPOSE 3000
 
-# Variables de entorno
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# Comando para iniciar la aplicación (ejecuta migración de BD si DATABASE_URL está activa)
+# Ejecutar migración de PostgreSQL y arrancar el servidor
 CMD ["sh", "-c", "npx prisma db push --skip-generate || true; node server.js"]
