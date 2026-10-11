@@ -210,14 +210,19 @@ async function loadDashboardData(companyId) {
       card.className = 'dept-card-item';
       card.style.setProperty('--dept-color', dept.color || '#3b82f6');
       card.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <h4>${dept.department}</h4>
-          <button class="btn-delete" onclick="deleteDept('${dept.id}')">Eliminar</button>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <h4>${escapeHtml(dept.department)}</h4>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-primary" style="padding: 4px 10px; font-size: 11px; background: #3b82f6;" onclick="openEditDeptModal('${escapeHtml(dept.id)}')">⚙️ Configurar</button>
+            <button class="btn-delete" style="padding: 4px 10px; font-size: 11px;" onclick="deleteDept('${escapeHtml(dept.id)}')">Eliminar</button>
+          </div>
         </div>
-        <p>${dept.info || 'Sin descripción'}</p>
+        <p style="font-size: 12px; margin: 8px 0; color: #cbd5e1; line-height: 1.4;">
+          <strong>💬 Diálogo 3D:</strong> "${escapeHtml(dept.info || 'Sin diálogo')}"
+        </p>
         <div class="dept-card-meta">
-          <span>👤 ${dept.name}</span>
-          <span style="color: var(--text-muted);">${dept.role}</span>
+          <span>👤 <strong>${escapeHtml(dept.name)}</strong></span>
+          <span style="color: var(--text-muted); font-size: 11px;">${escapeHtml(dept.role)}</span>
         </div>
       `;
       departmentsGrid.appendChild(card);
@@ -634,6 +639,66 @@ formNewDept.addEventListener('submit', async (e) => {
     alert('Error creando dependencia');
   }
 });
+
+// Modal Configurar / Editar Funcionario Líder y Diálogo
+const modalEditDept = document.getElementById('modalEditDept');
+const formEditDept = document.getElementById('formEditDept');
+const closeEditDeptBtn = document.getElementById('closeEditDeptBtn');
+const editDeptId = document.getElementById('editDeptId');
+const editDeptName = document.getElementById('editDeptName');
+const editDeptLeader = document.getElementById('editDeptLeader');
+const editDeptRole = document.getElementById('editDeptRole');
+const editDeptDesc = document.getElementById('editDeptDesc');
+const editDeptColor = document.getElementById('editDeptColor');
+
+if (closeEditDeptBtn) {
+  closeEditDeptBtn.addEventListener('click', () => modalEditDept.classList.add('hidden'));
+}
+
+window.openEditDeptModal = function(deptId) {
+  if (!currentCompanyData || !currentCompanyData.npcs) return;
+  const target = currentCompanyData.npcs.find(n => n.id === deptId);
+  if (!target) return;
+
+  editDeptId.value = target.id;
+  editDeptName.value = target.department || '';
+  editDeptLeader.value = target.name || '';
+  editDeptRole.value = target.role || '';
+  editDeptDesc.value = target.info || '';
+  editDeptColor.value = target.color || '#3B82F6';
+
+  modalEditDept.classList.remove('hidden');
+};
+
+if (formEditDept) {
+  formEditDept.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const deptId = editDeptId.value;
+    const name = editDeptName.value.trim();
+    const leaderName = editDeptLeader.value.trim();
+    const leaderRole = editDeptRole.value.trim();
+    const description = editDeptDesc.value.trim();
+    const color = editDeptColor.value;
+
+    try {
+      const res = await fetch(`/api/companies/${currentCompanyId}/departments/${deptId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, leaderName, leaderRole, description, color })
+      });
+      const data = await res.json();
+      if (data.success) {
+        modalEditDept.classList.add('hidden');
+        await loadDashboardData(currentCompanyId);
+        alert('¡Configuración de funcionario y diálogo 3D guardados con éxito!');
+      } else {
+        alert(data.error || 'Error al actualizar funcionario');
+      }
+    } catch (err) {
+      alert('Error de conexión al actualizar funcionario');
+    }
+  });
+}
 
 // Eliminar Dependencia
 window.deleteDept = async function(deptId) {

@@ -231,6 +231,50 @@
     </div>
   </div>
 
+  <!-- Modal Configurar / Editar Funcionario Líder y Diálogo 3D -->
+  <div id="modalEditDept" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border-color: #10b981;">Configuración de Funcionario</span>
+        <h2>Personalizar Líder y Tareas</h2>
+        <p>Define exactamente qué hace este funcionario, su cargo y lo que dirá al acercarse en 3D.</p>
+      </div>
+      <form id="formEditDept">
+        <input type="hidden" id="editDeptId">
+        <div class="form-group">
+          <label for="editDeptName">Nombre del Área / Dependencia</label>
+          <input type="text" id="editDeptName" required>
+        </div>
+        <div class="form-group">
+          <label for="editDeptLeader">Nombre del Funcionario Líder</label>
+          <input type="text" id="editDeptLeader" required>
+        </div>
+        <div class="form-group">
+          <label for="editDeptRole">Cargo Oficial</label>
+          <input type="text" id="editDeptRole" required>
+        </div>
+        <div class="form-group">
+          <label for="editDeptDesc">Diálogo de Bienvenida e Instrucciones (Al Acercarse)</label>
+          <textarea id="editDeptDesc" rows="4" placeholder="Escribe aquí el diálogo exacto que el líder dirá cuando un empleado se le acerque en la oficina..." required></textarea>
+          <small style="color: var(--text-muted); font-size: 11px;">Este mensaje aparecerá en el globo de diálogo 3D al interactuar con el funcionario.</small>
+        </div>
+        <div class="form-group">
+          <label for="editDeptColor">Color de Alfombra y Estación</label>
+          <select id="editDeptColor">
+            <option value="#8B5CF6">Morado Ejecutivo (#8B5CF6)</option>
+            <option value="#06B6D4">Cyan Tecnológico (#06B6D4)</option>
+            <option value="#3B82F6">Azul Corporativo (#3B82F6)</option>
+            <option value="#F59E0B">Naranja Creativo (#F59E0B)</option>
+            <option value="#10B981">Verde Finanzas (#10B981)</option>
+            <option value="#EC4899">Rosa Lounge (#EC4899)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary" style="background: #10b981;">Guardar Cambios de Funcionario 💾</button>
+        <button type="button" id="closeEditDeptBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal Registrar Funcionario -->
   <div id="modalNewEmp" class="modal-overlay hidden">
     <div class="modal-card">

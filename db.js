@@ -384,6 +384,56 @@ const dbManager = {
     }
   },
 
+  // Editar / Configurar lo que hace y dice un Funcionario / Líder de Dependencia
+  async updateDepartment(companySlug, departmentId, updateData) {
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          const updated = await prisma.department.update({
+            where: { id: departmentId },
+            data: {
+              ...(updateData.name ? { name: updateData.name.trim() } : {}),
+              ...(updateData.leaderName ? { leaderName: updateData.leaderName.trim() } : {}),
+              ...(updateData.leaderRole ? { leaderRole: updateData.leaderRole.trim() } : {}),
+              ...(updateData.description ? { description: updateData.description.trim() } : {}),
+              ...(updateData.color ? { color: updateData.color } : {})
+            }
+          });
+          return updated;
+        }
+      } catch (err) {
+        console.error('[DB Error] updateDepartment postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const company = fallback.companies[companySlug];
+    if (company) {
+      const npc = (company.npcs || []).find(n => n.id === departmentId);
+      if (npc) {
+        if (updateData.name) npc.department = updateData.name.trim();
+        if (updateData.leaderName) npc.name = updateData.leaderName.trim();
+        if (updateData.leaderRole) npc.role = updateData.leaderRole.trim();
+        if (updateData.description) npc.info = updateData.description.trim();
+        if (updateData.color) npc.color = updateData.color;
+      }
+      const dept = (company.departments || []).find(d => d.id === departmentId || d.name === npc?.department);
+      if (dept) {
+        if (updateData.name) dept.name = updateData.name.trim();
+        if (updateData.leaderName) dept.leaderName = updateData.leaderName.trim();
+        if (updateData.leaderRole) dept.leaderRole = updateData.leaderRole.trim();
+        if (updateData.description) dept.description = updateData.description.trim();
+        if (updateData.color) dept.color = updateData.color;
+      }
+      saveFallbackData(fallback);
+      return npc || dept;
+    }
+    return null;
+  },
+
   // Eliminar Dependencia
   async deleteDepartment(companySlug, departmentId) {
     if (usePostgres) {

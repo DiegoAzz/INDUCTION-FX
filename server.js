@@ -402,6 +402,31 @@ app.post('/api/companies/:companyId/departments', async (req, res) => {
   }
 });
 
+// Configurar / Editar qué hace y qué dice el líder de una dependencia
+app.put('/api/companies/:companyId/departments/:deptId', async (req, res) => {
+  const { companyId, deptId } = req.params;
+  const { name, leaderName, leaderRole, description, color } = req.body;
+
+  try {
+    const updated = await dbManager.updateDepartment(companyId, deptId, {
+      name,
+      leaderName,
+      leaderRole,
+      description,
+      color
+    });
+
+    const updatedCompany = await dbManager.getCompanyBySlug(companyId);
+    if (updatedCompany) {
+      io.to(companyId).emit('office:rebuild_layout', updatedCompany.npcs);
+    }
+
+    res.json({ success: true, department: updated });
+  } catch (err) {
+    res.status(500).json({ error: 'Error actualizando dependencia y diálogo' });
+  }
+});
+
 // Eliminar una dependencia
 app.delete('/api/companies/:companyId/departments/:deptId', async (req, res) => {
   const { companyId, deptId } = req.params;

@@ -133,86 +133,390 @@ boardPointLight.position.set(0, 8, -20);
 scene.add(boardPointLight);
 
 // ----------------------------------------------------
-// ENTORNO 3D DE LA OFICINA
+// ENTORNO 3D DE LA OFICINA CORPORATIVA REALISTA (ESTILO ISOMÉTRICO MODERNO)
 // ----------------------------------------------------
-const floorGeo = new THREE.PlaneGeometry(80, 80);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+
+// 1. Textura procedural elegante de Suelo Parquet de Madera Cálida
+function createWoodParquetTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Fondo madera cálida
+  ctx.fillStyle = '#b4733c';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Tablones de parquet con vetas
+  const plankHeight = 32;
+  const plankWidth = 128;
+
+  for (let y = 0; y < 512; y += plankHeight) {
+    const offsetX = (Math.floor(y / plankHeight) % 2 === 0) ? 0 : plankWidth / 2;
+    for (let x = -plankWidth; x < 512 + plankWidth; x += plankWidth) {
+      const px = x + offsetX;
+      // Variación sutil de color entre tablones
+      const toneVariation = (Math.sin(px * 12.3 + y * 7.7) * 15);
+      const r = Math.min(255, Math.max(0, 180 + toneVariation));
+      const g = Math.min(255, Math.max(0, 115 + toneVariation * 0.8));
+      const b = Math.min(255, Math.max(0, 60 + toneVariation * 0.6));
+      ctx.fillStyle = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
+      ctx.fillRect(px + 1, y + 1, plankWidth - 2, plankHeight - 2);
+
+      // Líneas de ranura entre tablones
+      ctx.strokeStyle = 'rgba(70, 35, 12, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(px + 1, y + 1, plankWidth - 2, plankHeight - 2);
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(12, 12);
+  return tex;
+}
+
+const woodTexture = createWoodParquetTexture();
+const floorGeo = new THREE.PlaneGeometry(84, 84);
+const floorMat = new THREE.MeshStandardMaterial({
+  map: woodTexture,
+  roughness: 0.4,
+  metalness: 0.05
+});
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const gridHelper = new THREE.GridHelper(80, 40, 0x38bdf8, 0x334155);
-gridHelper.position.y = 0.01;
-scene.add(gridHelper);
+// Materiales de Arquitectura Corporativa
+const wallMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.8 }); // Paredes blancas limpias
+const darkFrameMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 }); // Marcos de aluminio negro/acero
+const glassMat = new THREE.MeshStandardMaterial({
+  color: 0x67e8f9,
+  transparent: true,
+  opacity: 0.30,
+  roughness: 0.08,
+  metalness: 0.1
+}); // Vidrio templado cristalino
+const darkLeatherMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35 }); // Cuero ejecutivo sillas
+const chromeMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, metalness: 0.85, roughness: 0.2 }); // Metal cromado
+const whiteFurnitureMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }); // Mobiliario blanco sastre
+const counterWoodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.4 }); // Madera nogal mostrador
+const cafeteriaGreenMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 }); // Mueble verde cafetería
 
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x243454, roughness: 0.6 });
-const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35, roughness: 0.1 });
+// Constructor de Mamparas de Cristal Templado con Marcos de Aluminio
+function createGlassPartition(x, z, length, rotationY = 0, height = 4.8) {
+  const group = new THREE.Group();
+  group.position.set(x, 0, z);
+  group.rotation.y = rotationY;
 
-function createWall(x, z, width, depth, height = 5.5, isGlass = false) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), isGlass ? glassMat : wallMat);
+  // Panel de Vidrio
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(length, height - 0.2, 0.12), glassMat);
+  glass.position.y = height / 2;
+  group.add(glass);
+
+  // Marco superior e inferior de aluminio
+  const frameBottom = new THREE.Mesh(new THREE.BoxGeometry(length, 0.12, 0.18), darkFrameMat);
+  frameBottom.position.y = 0.06;
+  group.add(frameBottom);
+
+  const frameTop = new THREE.Mesh(new THREE.BoxGeometry(length, 0.12, 0.18), darkFrameMat);
+  frameTop.position.y = height;
+  group.add(frameTop);
+
+  // Postes verticales en los extremos
+  const postL = new THREE.Mesh(new THREE.BoxGeometry(0.14, height, 0.18), darkFrameMat);
+  postL.position.set(-length / 2, height / 2, 0);
+  group.add(postL);
+
+  const postR = new THREE.Mesh(new THREE.BoxGeometry(0.14, height, 0.18), darkFrameMat);
+  postR.position.set(length / 2, height / 2, 0);
+  group.add(postR);
+
+  scene.add(group);
+  return group;
+}
+
+// Constructor de Paredes Sólidas Estructurales
+function createWall(x, z, width, depth, height = 5.5) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), wallMat);
   mesh.position.set(x, height / 2, z);
-  mesh.castShadow = !isGlass;
+  mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
   return mesh;
 }
 
-// Paredes exteriores
-createWall(0, -35, 70, 1.5, 6);
-createWall(0, 35, 70, 1.5, 6);
-createWall(-35, 0, 1.5, 70, 6);
-createWall(35, 0, 1.5, 70, 6);
+// Paredes Perimetrales del Edificio con Gran Ventanal
+createWall(0, -38, 76, 1.4, 5.5); // Norte
+createWall(0, 38, 76, 1.4, 5.5);  // Sur
+createWall(-38, 0, 1.4, 76, 5.5); // Oeste
+createWall(38, 0, 1.4, 76, 5.5);  // Este
 
-// Sala de Juntas Ejecutiva (Norte)
-createWall(-12, -22, 1, 24, 5, true);
-createWall(12, -22, 1, 24, 5, true);
-createWall(-7, -10, 9, 1, 5, true);
-createWall(7, -10, 9, 1, 5, true);
+// ----------------------------------------------------
+// 2. GRAN SALA DE JUNTAS EJECUTIVA (BOARDROOM - ZONA NORTE)
+// ----------------------------------------------------
+const boardRoom = new THREE.Group();
+boardRoom.position.set(0, 0, -22);
 
+// Alfombra Azul Marino Ejecutiva
 const boardCarpet = new THREE.Mesh(
-  new THREE.PlaneGeometry(22, 22),
-  new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.7 })
+  new THREE.PlaneGeometry(22, 18),
+  new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.9 })
 );
 boardCarpet.rotation.x = -Math.PI / 2;
-boardCarpet.position.set(0, 0.02, -22);
+boardCarpet.position.y = 0.02;
 boardCarpet.receiveShadow = true;
-scene.add(boardCarpet);
+boardRoom.add(boardCarpet);
 
-const boardTable = new THREE.Mesh(
-  new THREE.CylinderGeometry(5.5, 5.5, 1.2, 32),
-  new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 })
+// Gran Mesa de Juntas Ovalada Ejecutiva
+const boardTableBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.4, 1.8, 1.3, 24),
+  darkFrameMat
 );
-boardTable.position.set(0, 1.2, -22);
-boardTable.castShadow = true;
-scene.add(boardTable);
+boardTableBase.position.set(0, 0.65, 0);
+boardRoom.add(boardTableBase);
 
-// Divisiones de Oficinas
-createWall(-20, 5, 28, 1, 4);
-createWall(20, 5, 28, 1, 4);
+const boardTablePillarL = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 1.3, 18), darkFrameMat);
+boardTablePillarL.position.set(-5, 0.65, 0);
+boardRoom.add(boardTablePillarL);
 
-// Plantas
+const boardTablePillarR = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 1.3, 18), darkFrameMat);
+boardTablePillarR.position.set(5, 0.65, 0);
+boardRoom.add(boardTablePillarR);
+
+// Tapa de Mesa Ovalada
+const tableTop = new THREE.Mesh(
+  new THREE.BoxGeometry(14, 0.16, 5.2),
+  new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25 })
+);
+tableTop.position.y = 1.38;
+tableTop.castShadow = true;
+boardRoom.add(tableTop);
+
+// Franja Pasacables de Acero Cromado Central
+const cableTray = new THREE.Mesh(new THREE.BoxGeometry(11, 0.17, 0.8), chromeMat);
+cableTray.position.y = 1.385;
+boardRoom.add(cableTray);
+
+// Constructor de Sillas Ergonómicas Ejecuticas de Cuero con Ruedas
+function createExecutiveChair(x, z, rotY = 0) {
+  const chair = new THREE.Group();
+  chair.position.set(x, 0, z);
+  chair.rotation.y = rotY;
+
+  // Base de 5 ruedas cromadas
+  const wheelBase = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 0.08, 12), chromeMat);
+  wheelBase.position.y = 0.12;
+  chair.add(wheelBase);
+
+  const column = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.55, 12), chromeMat);
+  column.position.y = 0.40;
+  chair.add(column);
+
+  // Asiento acolchado
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.16, 0.95), darkLeatherMat);
+  seat.position.y = 0.72;
+  seat.castShadow = true;
+  chair.add(seat);
+
+  // Respaldar alto con soporte lumbar
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.90, 1.15, 0.14), darkLeatherMat);
+  back.position.set(0, 1.32, -0.42);
+  back.rotation.x = -0.06;
+  back.castShadow = true;
+  chair.add(back);
+
+  // Descansabrazos cromados
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.65), chromeMat);
+  armL.position.set(-0.52, 0.92, -0.08);
+  chair.add(armL);
+
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.65), chromeMat);
+  armR.position.set(0.52, 0.92, -0.08);
+  chair.add(armR);
+
+  return chair;
+}
+
+// Sillas alrededor de la mesa de conferencias
+const chairPositions = [
+  { x: -5, z: 3.4, rot: 0 },
+  { x: -2.5, z: 3.4, rot: 0 },
+  { x: 0, z: 3.4, rot: 0 },
+  { x: 2.5, z: 3.4, rot: 0 },
+  { x: 5, z: 3.4, rot: 0 },
+  { x: -5, z: -3.4, rot: Math.PI },
+  { x: -2.5, z: -3.4, rot: Math.PI },
+  { x: 0, z: -3.4, rot: Math.PI },
+  { x: 2.5, z: -3.4, rot: Math.PI },
+  { x: 5, z: -3.4, rot: Math.PI },
+  { x: -7.8, z: 0, rot: Math.PI / 2 },
+  { x: 7.8, z: 0, rot: -Math.PI / 2 }
+];
+chairPositions.forEach(cp => {
+  boardRoom.add(createExecutiveChair(cp.x, cp.z, cp.rot));
+});
+
+// Pantalla / Pizarra de Proyección Ejecutiva
+const projectorScreen = new THREE.Mesh(
+  new THREE.BoxGeometry(8.5, 4.2, 0.12),
+  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
+);
+projectorScreen.position.set(0, 3.4, -8.7);
+boardRoom.add(projectorScreen);
+
+const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(8.8, 4.5, 0.10), darkFrameMat);
+screenFrame.position.set(0, 3.4, -8.76);
+boardRoom.add(screenFrame);
+
+scene.add(boardRoom);
+
+// Paredes de cristal divisorias para la Sala de Juntas
+createGlassPartition(-11, -22, 18, Math.PI / 2);
+createGlassPartition(11, -22, 18, Math.PI / 2);
+createGlassPartition(-6.5, -13, 9, 0);
+createGlassPartition(6.5, -13, 9, 0);
+
+// ----------------------------------------------------
+// 3. RECEPCIÓN / LOBBY CORPORATIVO (ZONA ENTRADA SUR-ESTE)
+// ----------------------------------------------------
+const lobbyGroup = new THREE.Group();
+lobbyGroup.position.set(22, 0, 22);
+
+// Mostrador de Recepción Curvo con Acabado Nogal y Blanco
+const receptionDesk = new THREE.Mesh(
+  new THREE.BoxGeometry(7.5, 1.8, 2.2),
+  counterWoodMat
+);
+receptionDesk.position.set(0, 0.9, 0);
+receptionDesk.castShadow = true;
+lobbyGroup.add(receptionDesk);
+
+const receptionTop = new THREE.Mesh(
+  new THREE.BoxGeometry(7.8, 0.14, 2.4),
+  whiteFurnitureMat
+);
+receptionTop.position.set(0, 1.84, 0);
+lobbyGroup.add(receptionTop);
+
+// Silla de recepcionista
+lobbyGroup.add(createExecutiveChair(0, 1.4, 0));
+
+// Sofás de Espera de Cuero Blanco
+function createOfficeSofa(x, z, rotY = 0) {
+  const sofa = new THREE.Group();
+  sofa.position.set(x, 0, z);
+  sofa.rotation.y = rotY;
+
+  const base = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.45, 1.4), whiteFurnitureMat);
+  base.position.y = 0.35;
+  base.castShadow = true;
+  sofa.add(base);
+
+  const backrest = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.9, 0.35), whiteFurnitureMat);
+  backrest.position.set(0, 0.95, -0.55);
+  sofa.add(backrest);
+
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.65, 1.4), whiteFurnitureMat);
+  armL.position.set(-1.8, 0.65, 0);
+  sofa.add(armL);
+
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.65, 1.4), whiteFurnitureMat);
+  armR.position.set(1.8, 0.65, 0);
+  sofa.add(armR);
+
+  return sofa;
+}
+
+lobbyGroup.add(createOfficeSofa(-6, -6, Math.PI / 4));
+lobbyGroup.add(createOfficeSofa(-6, 4, -Math.PI / 4));
+
+// Mesa de centro en Lobby
+const coffeeTable = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 1.6), darkFrameMat);
+coffeeTable.position.set(-6, 0.3, -1);
+lobbyGroup.add(coffeeTable);
+
+scene.add(lobbyGroup);
+
+// ----------------------------------------------------
+// 4. CAFETERÍA & LOUNGE DE DESCANSO (ZONA SUR-OESTE)
+// ----------------------------------------------------
+const cafeGroup = new THREE.Group();
+cafeGroup.position.set(-22, 0, 22);
+
+// Barra de Cafetería Verde Moderna con Nevera
+const kitchenBar = new THREE.Mesh(new THREE.BoxGeometry(9.0, 1.7, 1.8), cafeteriaGreenMat);
+kitchenBar.position.set(0, 0.85, 0);
+kitchenBar.castShadow = true;
+cafeGroup.add(kitchenBar);
+
+const kitchenTop = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.14, 2.0), whiteFurnitureMat);
+kitchenTop.position.set(0, 1.75, 0);
+cafeGroup.add(kitchenTop);
+
+// Nevera ejecutiva
+const fridge = new THREE.Mesh(new THREE.BoxGeometry(1.6, 4.0, 1.6), chromeMat);
+fridge.position.set(-5.2, 2.0, 0);
+cafeGroup.add(fridge);
+
+// Cafetera Espresso sobre la barra
+const coffeeMachine = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.6), chromeMat);
+coffeeMachine.position.set(2.5, 2.15, 0);
+cafeGroup.add(coffeeMachine);
+
+// Bancos altos de barra
+for (let i = -2; i <= 2; i++) {
+  const stool = new THREE.Group();
+  stool.position.set(i * 1.6, 0, 2.2);
+
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.2, 10), chromeMat);
+  leg.position.y = 0.6;
+  stool.add(leg);
+
+  const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.12, 16), darkLeatherMat);
+  seat.position.y = 1.25;
+  stool.add(seat);
+
+  cafeGroup.add(stool);
+}
+
+scene.add(cafeGroup);
+
+// ----------------------------------------------------
+// 5. CUBÍCULOS Y DIVISIONES DE CRISTAL INTERIORES
+// ----------------------------------------------------
+createGlassPartition(-22, 5, 24, 0);
+createGlassPartition(22, 5, 24, 0);
+createGlassPartition(0, 8, 18, Math.PI / 2);
+
+// Plantas de interior elegantes en esquinas
 function createOfficePlant(x, z) {
   const group = new THREE.Group();
-  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.6, 1.4, 16), new THREE.MeshStandardMaterial({ color: 0xb45309 }));
-  pot.position.y = 0.7;
+  const pot = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.6, 1.4), whiteFurnitureMat);
+  pot.position.y = 0.8;
+  pot.castShadow = true;
   group.add(pot);
 
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4 });
-  for (let i = 0; i < 4; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 8), leafMat);
-    leaf.scale.set(1, 1.8, 0.6);
-    leaf.position.set(Math.sin(i * 1.5) * 0.4, 2 + i * 0.3, Math.cos(i * 1.5) * 0.4);
-    leaf.rotation.y = i * 0.8;
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.35 });
+  for (let i = 0; i < 6; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.85, 8, 8), leafMat);
+    leaf.scale.set(0.8, 2.2, 0.5);
+    leaf.position.set(Math.sin(i * 1.05) * 0.5, 2.4 + i * 0.25, Math.cos(i * 1.05) * 0.5);
+    leaf.rotation.y = i * 0.75;
     group.add(leaf);
   }
   group.position.set(x, 0, z);
   scene.add(group);
 }
-createOfficePlant(-32, -32);
-createOfficePlant(32, -32);
-createOfficePlant(-32, 32);
-createOfficePlant(32, 32);
+
+createOfficePlant(-34, -34);
+createOfficePlant(34, -34);
+createOfficePlant(-34, 34);
+createOfficePlant(34, 34);
+createOfficePlant(-14, -12);
+createOfficePlant(14, -12);
 
 // ----------------------------------------------------
 // NPCS 3D CON CARAS REALES Y TEXTURAS
@@ -236,40 +540,80 @@ function buildNpcWorld(npcs) {
 
     const stationGroup = new THREE.Group();
 
-    // Alfombra de color
+    // Alfombra de color delimitadora de dependencia
     const carpet = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 8),
-      new THREE.MeshStandardMaterial({ color: color, roughness: 0.8 })
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.85 })
     );
     carpet.rotation.x = -Math.PI / 2;
     carpet.position.y = 0.015;
     carpet.receiveShadow = true;
     stationGroup.add(carpet);
 
-    // Escritorio
-    const desk = new THREE.Mesh(
-      new THREE.BoxGeometry(6, 1.6, 2.8),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 })
+    // Mampara de Cristal de fondo para la oficina privada
+    const cubicleGlass = new THREE.Mesh(
+      new THREE.BoxGeometry(9.6, 3.8, 0.12),
+      glassMat
     );
-    desk.position.set(0, 0.8, 0);
+    cubicleGlass.position.set(0, 1.9, -3.8);
+    stationGroup.add(cubicleGlass);
+
+    const cubicleFrame = new THREE.Mesh(
+      new THREE.BoxGeometry(9.8, 0.14, 0.16),
+      darkFrameMat
+    );
+    cubicleFrame.position.set(0, 3.8, -3.8);
+    stationGroup.add(cubicleFrame);
+
+    // Escritorio Ejecutivo Moderno de Madera y Metal
+    const desk = new THREE.Mesh(
+      new THREE.BoxGeometry(6.4, 1.5, 3.0),
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+    );
+    desk.position.set(0, 0.75, 0);
     desk.castShadow = true;
     stationGroup.add(desk);
 
-    // Laptop encendida
-    const laptopBase = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.08, 1.0),
-      new THREE.MeshStandardMaterial({ color: 0x0f172a })
+    const deskTop = new THREE.Mesh(
+      new THREE.BoxGeometry(6.6, 0.12, 3.2),
+      whiteFurnitureMat
     );
-    laptopBase.position.set(0, 1.64, 0);
-    stationGroup.add(laptopBase);
+    deskTop.position.set(0, 1.52, 0);
+    deskTop.castShadow = true;
+    stationGroup.add(deskTop);
+
+    // Monitor Principal Corporativo de Alta Definición
+    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 0.5, 12), chromeMat);
+    stand.position.set(0, 1.80, -0.4);
+    stationGroup.add(stand);
+
+    const monitorFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.12), darkFrameMat);
+    monitorFrame.position.set(0, 2.45, -0.4);
+    stationGroup.add(monitorFrame);
 
     const screen = new THREE.Mesh(
-      new THREE.BoxGeometry(1.4, 0.9, 0.06),
-      new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.6 })
+      new THREE.BoxGeometry(2.2, 1.25, 0.06),
+      new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.45 })
     );
-    screen.position.set(0, 2.1, -0.45);
-    screen.rotation.x = -0.15;
+    screen.position.set(0, 2.45, -0.34);
     stationGroup.add(screen);
+
+    // Teclado y Mouse
+    const keyboard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.45), darkFrameMat);
+    keyboard.position.set(0, 1.60, 0.3);
+    stationGroup.add(keyboard);
+
+    const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.28), darkFrameMat);
+    mouse.position.set(0.9, 1.60, 0.3);
+    stationGroup.add(mouse);
+
+    // Silla Ejecutiva detrás del escritorio
+    stationGroup.add(createExecutiveChair(0, -1.7, 0));
+
+    // Archivador / Cajonera bajo el escritorio
+    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 2.2), whiteFurnitureMat);
+    cabinet.position.set(2.2, 0.60, 0);
+    stationGroup.add(cabinet);
 
     // NPC Modelo Humanoide Ejecutivo Corporativo
     const nameLower = (npc.name || '').toLowerCase();
@@ -1591,13 +1935,31 @@ function closePeerConnection(id) {
 function updateSpatialAudioVolumes() {
   if (!selfId || !players[selfId]) return;
   const me = players[selfId];
-  const maxDistance = 25;
+  const maxDistance = 18; // Radio auditivo espacial natural de oficina
 
   for (const id in peerAudioElements) {
     const target = players[id];
     const audio = peerAudioElements[id];
     if (!target || !audio) continue;
 
+    // 1. Si están en llamada privada 1 a 1, volumen al 100% independiente de la distancia
+    if (activeCallPartnerId === id) {
+      audio.volume = 1.0;
+      continue;
+    }
+
+    // 2. Aislamiento acústico de la Sala de Juntas (Privacidad acústica total)
+    // El área de la sala de juntas está en z < -13 y |x| < 12
+    const meInBoardroom = (me.z < -13 && Math.abs(me.x) < 12);
+    const targetInBoardroom = ((target.z || 0) < -13 && Math.abs(target.x || 0) < 12);
+
+    if (meInBoardroom !== targetInBoardroom) {
+      // Las paredes de cristal acústico aíslan la conversación de quienes estén afuera
+      audio.volume = 0;
+      continue;
+    }
+
+    // 3. Audio por proximidad en espacio abierto (cercano y privado)
     const dist = Math.hypot(me.x - target.x, (me.z || 0) - (target.z || 0));
     if (dist > maxDistance) {
       audio.volume = 0;
