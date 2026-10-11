@@ -31,9 +31,11 @@ const npcCloseBtn = document.getElementById('npcCloseBtn');
 
 // Sidebar Tabs
 const tabChatBtn = document.getElementById('tabChatBtn');
+const tabPrivateDmBtn = document.getElementById('tabPrivateDmBtn');
 const tabTasksBtn = document.getElementById('tabTasksBtn');
 const tabAdminBtn = document.getElementById('tabAdminBtn');
 const chatView = document.getElementById('chatView');
+const privateDmView = document.getElementById('privateDmView');
 const tasksView = document.getElementById('tasksView');
 const adminView = document.getElementById('adminView');
 
@@ -78,8 +80,8 @@ const keysPressed = {
 // THREE.JS SETUP
 // ----------------------------------------------------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x080d1a);
-scene.fog = new THREE.Fog(0x080d1a, 35, 95);
+scene.background = new THREE.Color(0x0f172a);
+scene.fog = new THREE.Fog(0x0f172a, 45, 120);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
 camera.position.set(0, 18, 22);
@@ -88,25 +90,31 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'hi
 renderer.setSize(800, 600);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
 canvasContainer.appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
-dirLight.position.set(20, 45, 20);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
+dirLight.position.set(20, 50, 20);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
 dirLight.shadow.camera.near = 0.5;
-dirLight.shadow.camera.far = 100;
-dirLight.shadow.camera.left = -40;
-dirLight.shadow.camera.right = 40;
-dirLight.shadow.camera.top = 40;
-dirLight.shadow.camera.bottom = -40;
+dirLight.shadow.camera.far = 120;
+dirLight.shadow.camera.left = -45;
+dirLight.shadow.camera.right = 45;
+dirLight.shadow.camera.top = 45;
+dirLight.shadow.camera.bottom = -45;
 scene.add(dirLight);
 
-const boardPointLight = new THREE.PointLight(0xec4899, 1.8, 28);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 0.85);
+hemiLight.position.set(0, 50, 0);
+scene.add(hemiLight);
+
+const boardPointLight = new THREE.PointLight(0xec4899, 2.0, 35);
 boardPointLight.position.set(0, 8, -20);
 scene.add(boardPointLight);
 
@@ -114,13 +122,13 @@ scene.add(boardPointLight);
 // ENTORNO 3D DE LA OFICINA
 // ----------------------------------------------------
 const floorGeo = new THREE.PlaneGeometry(80, 80);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x172136, roughness: 0.8 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-const gridHelper = new THREE.GridHelper(80, 40, 0x223252, 0x172136);
+const gridHelper = new THREE.GridHelper(80, 40, 0x38bdf8, 0x334155);
 gridHelper.position.y = 0.01;
 scene.add(gridHelper);
 
@@ -342,10 +350,9 @@ function createAvatarMesh(colorHex, isSelf = false) {
 // CONTROLES WASD Y FLECHAS INFALIBLES
 // ----------------------------------------------------
 window.addEventListener('keydown', (e) => {
-  if (document.activeElement === chatInput || 
-      document.activeElement === adminNpcName || 
-      document.activeElement === adminNpcDept || 
-      document.activeElement === adminNpcInfo) {
+  if (document.activeElement?.tagName === 'INPUT' || 
+      document.activeElement?.tagName === 'TEXTAREA' || 
+      document.activeElement?.tagName === 'SELECT') {
     return;
   }
 
@@ -709,7 +716,7 @@ async function initApp() {
     try {
       const data = JSON.parse(saved);
       if (data.companyId && data.name) {
-        loginPlayer(data.companyId, data.name, data.role, data.color);
+        loginPlayer(data.companyId, data.name, data.email || '', data.role || 'Funcionario', data.department || 'General', data.color || '#3b82f6');
       }
     } catch (e) {
       console.warn('Error restaurando sesión');
@@ -737,7 +744,7 @@ socket.on('office:init', (data) => {
 
   buildNpcWorld(data.npcs);
   renderChecklist();
-  populateAdminForm();
+  if (typeof populateAdminForm === 'function') populateAdminForm();
   updatePlayerCount();
 
   // Crear avatares 3D
@@ -750,7 +757,11 @@ socket.on('office:init', (data) => {
     playerMeshes[id] = mesh;
   }
 
-  animate();
+  handleResize();
+  if (!isAnimating) {
+    isAnimating = true;
+    animate();
+  }
 });
 
 socket.on('player:joined', (player) => {
@@ -831,14 +842,12 @@ socket.on('player:left', (id) => {
 socket.on('office:npcs_updated', (npcs) => {
   buildNpcWorld(npcs);
   renderChecklist();
-  populateAdminForm();
+  if (typeof populateAdminForm === 'function') populateAdminForm();
 });
 
 // ----------------------------------------------------
 // SISTEMA DE LLAMADAS PRIVADAS 1 A 1 & CHAT PRIVADO (DM)
 // ----------------------------------------------------
-const tabPrivateDmBtn = document.getElementById('tabPrivateDmBtn');
-const privateDmView = document.getElementById('privateDmView');
 const privateDmMessages = document.getElementById('privateDmMessages');
 const privateDmForm = document.getElementById('privateDmForm');
 const privateDmInput = document.getElementById('privateDmInput');
@@ -1080,7 +1089,7 @@ function playRadioBeep(isStart = true) {
 socket.on('office:rebuild_layout', (npcs) => {
   buildNpcWorld(npcs);
   renderChecklist();
-  populateAdminForm();
+  if (typeof populateAdminForm === 'function') populateAdminForm();
 });
 
 // Inicializar micrófono con cancelación estricta de eco y ruido
@@ -1155,10 +1164,9 @@ window.addEventListener('touchend', () => stopTransmitting());
 
 // Eventos de Teclado: Barra Espaciadora o Tecla 'V' (Push-to-Talk)
 window.addEventListener('keydown', (e) => {
-  if (document.activeElement === chatInput || 
-      document.activeElement === adminNpcName || 
-      document.activeElement === adminNpcDept || 
-      document.activeElement === adminNpcInfo) {
+  if (document.activeElement?.tagName === 'INPUT' || 
+      document.activeElement?.tagName === 'TEXTAREA' || 
+      document.activeElement?.tagName === 'SELECT') {
     return;
   }
 
@@ -1297,23 +1305,31 @@ function openNpcModal(npc) {
 npcCloseBtn.addEventListener('click', () => npcModal.classList.add('hidden'));
 
 // ----------------------------------------------------
-// ADMIN FORM
+// TABS DE LA BARRA LATERAL (CHAT, PRIVADO, INDUCCIÓN)
 // ----------------------------------------------------
 function switchTab(activeBtn, activeView) {
-  [tabChatBtn, tabTasksBtn, tabAdminBtn].forEach(b => b.classList.remove('active'));
-  [chatView, tasksView, adminView].forEach(v => v.classList.remove('active'));
-  activeBtn.classList.add('active');
-  activeView.classList.add('active');
+  const allTabs = [tabChatBtn, tabPrivateDmBtn, tabTasksBtn, tabAdminBtn].filter(Boolean);
+  const allViews = [chatView, privateDmView, tasksView, adminView].filter(Boolean);
+
+  allTabs.forEach(b => b.classList.remove('active'));
+  allViews.forEach(v => v.classList.remove('active'));
+
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activeView) activeView.classList.add('active');
 }
 
-tabChatBtn.addEventListener('click', () => switchTab(tabChatBtn, chatView));
-tabTasksBtn.addEventListener('click', () => switchTab(tabTasksBtn, tasksView));
-tabAdminBtn.addEventListener('click', () => {
-  switchTab(tabAdminBtn, adminView);
-  populateAdminForm();
-});
+if (tabChatBtn) tabChatBtn.addEventListener('click', () => switchTab(tabChatBtn, chatView));
+if (tabPrivateDmBtn) tabPrivateDmBtn.addEventListener('click', () => switchTab(tabPrivateDmBtn, privateDmView));
+if (tabTasksBtn) tabTasksBtn.addEventListener('click', () => switchTab(tabTasksBtn, tasksView));
+if (tabAdminBtn) {
+  tabAdminBtn.addEventListener('click', () => {
+    switchTab(tabAdminBtn, adminView);
+    populateAdminForm();
+  });
+}
 
 function populateAdminForm() {
+  if (!adminSelectNpc) return;
   adminSelectNpc.innerHTML = '';
   officeNpcs.forEach(npc => {
     const opt = document.createElement('option');
@@ -1324,31 +1340,35 @@ function populateAdminForm() {
   loadSelectedNpcData();
 }
 
-adminSelectNpc.addEventListener('change', loadSelectedNpcData);
+if (adminSelectNpc) adminSelectNpc.addEventListener('change', loadSelectedNpcData);
 
 function loadSelectedNpcData() {
+  if (!adminSelectNpc) return;
   const selected = officeNpcs.find(n => n.id === adminSelectNpc.value);
   if (selected) {
-    adminNpcName.value = selected.name;
-    adminNpcDept.value = selected.department;
-    adminNpcInfo.value = selected.info;
+    if (adminNpcName) adminNpcName.value = selected.name;
+    if (adminNpcDept) adminNpcDept.value = selected.department;
+    if (adminNpcInfo) adminNpcInfo.value = selected.info;
   }
 }
 
-adminEditForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const id = adminSelectNpc.value;
-  const name = adminNpcName.value.trim();
-  const department = adminNpcDept.value.trim();
-  const info = adminNpcInfo.value.trim();
+if (adminEditForm) {
+  adminEditForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = adminSelectNpc ? adminSelectNpc.value : null;
+    const name = adminNpcName ? adminNpcName.value.trim() : '';
+    const department = adminNpcDept ? adminNpcDept.value.trim() : '';
+    const info = adminNpcInfo ? adminNpcInfo.value.trim() : '';
 
-  socket.emit('admin:update_npc', { id, name, department, info });
-  alert('¡NPC y políticas actualizadas en la empresa!');
-});
+    socket.emit('admin:update_npc', { id, name, department, info });
+    alert('¡NPC y políticas actualizadas en la empresa!');
+  });
+}
 
 // ----------------------------------------------------
 // BUCLE DE FÍSICAS 3D Y ANIMACIÓN
 // ----------------------------------------------------
+let isAnimating = false;
 let lastTime = performance.now();
 
 function animate() {
