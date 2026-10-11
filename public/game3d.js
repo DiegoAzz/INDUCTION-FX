@@ -50,10 +50,6 @@ const adminNpcName = document.getElementById('adminNpcName');
 const adminNpcDept = document.getElementById('adminNpcDept');
 const adminNpcInfo = document.getElementById('adminNpcInfo');
 const adminEditForm = document.getElementById('adminEditForm');
-
-const toggleMicBtn = document.getElementById('toggleMicBtn');
-const micIcon = document.getElementById('micIcon');
-const micText = document.getElementById('micText');
 const audioStreamsContainer = document.getElementById('audioStreamsContainer');
 
 // State
@@ -476,8 +472,8 @@ logoutBtn.addEventListener('click', () => {
   location.reload();
 });
 
-// Auto-login si ya existía sesión guardada en el navegador
-window.addEventListener('DOMContentLoaded', async () => {
+// Inicializar empresas y sesión
+async function initApp() {
   await loadCompanies();
   const saved = localStorage.getItem('induction_session');
   if (saved) {
@@ -490,7 +486,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       console.warn('Error restaurando sesión');
     }
   }
-});
+}
+
+initApp();
+window.addEventListener('DOMContentLoaded', initApp);
 
 // ----------------------------------------------------
 // SOCKETS Y MULTIJUGADOR
@@ -582,6 +581,8 @@ socket.on('player:voice_updated', (data) => {
     }
   }
 });
+
+socket.on('player:left', (id) => {
   if (players[id]) {
     addChatMessage({
       senderName: '🏢 Sede 3D',
