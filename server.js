@@ -638,6 +638,21 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // Desconectar sesión previa si este mismo empleado ya estaba abierto en otro dispositivo/pestaña
+    for (const oldSocketId in activePlayers) {
+      const p = activePlayers[oldSocketId];
+      if (p.companyId === companyId && p.email === email && oldSocketId !== socket.id) {
+        console.log(`[Induction] Reemplazando sesión previa de ${email} (Socket ${oldSocketId})`);
+        io.to(oldSocketId).emit('player:session_replaced', {
+          message: 'Se ha iniciado sesión con tu cuenta desde otro dispositivo.'
+        });
+        socket.to(companyId).emit('player:left', oldSocketId);
+        const oldSock = io.sockets.sockets.get(oldSocketId);
+        if (oldSock) oldSock.leave(companyId);
+        delete activePlayers[oldSocketId];
+      }
+    }
+
     socket.join(companyId);
 
     const empName = existingEmp.name;

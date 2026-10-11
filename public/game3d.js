@@ -1455,6 +1455,12 @@ socket.on('office:init', (data) => {
   if (typeof populateAdminForm === 'function') populateAdminForm();
   updatePlayerCount();
 
+  // Limpiar avatares previos para evitar duplicados residuales
+  for (const oldId in playerMeshes) {
+    if (playerMeshes[oldId]) scene.remove(playerMeshes[oldId]);
+  }
+  for (const k in playerMeshes) delete playerMeshes[k];
+
   // Crear avatares 3D
   for (const id in players) {
     const p = players[id];
@@ -1574,6 +1580,18 @@ socket.on('player:left', (id) => {
     closePeerConnection(id);
     updatePlayerCount();
   }
+});
+
+socket.on('player:session_replaced', (data) => {
+  alert(data.message || 'Tu sesión fue abierta en otro dispositivo. Desconectando este equipo.');
+  localStorage.removeItem('induction_session');
+  location.reload();
+});
+
+socket.on('player:error', (data) => {
+  alert(data.error || 'Error al conectar con la sede.');
+  localStorage.removeItem('induction_session');
+  location.reload();
 });
 
 socket.on('office:npcs_updated', (npcs) => {
