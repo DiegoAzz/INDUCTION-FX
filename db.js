@@ -1,5 +1,4 @@
 // Capa de Abstracción de Base de Datos (PostgreSQL via Prisma con Fallback Resiliente)
-const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
@@ -8,6 +7,7 @@ let usePostgres = false;
 
 if (process.env.DATABASE_URL) {
   try {
+    const { PrismaClient } = require('@prisma/client');
     // Normalizar protocolo de postgres:// a postgresql:// para Prisma
     if (process.env.DATABASE_URL.startsWith('postgres://')) {
       process.env.DATABASE_URL = process.env.DATABASE_URL.replace('postgres://', 'postgresql://');
