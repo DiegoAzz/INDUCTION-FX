@@ -29,30 +29,42 @@
         <button type="button" class="auth-tab-btn" id="tabRegisterCompanyBtn">🏢 Registrar Empresa</button>
       </div>
 
-      <!-- Formulario 1: Ingreso de Empleado -->
+      <!-- Formulario 1: Ingreso de Funcionario -->
       <form id="employeeLoginForm" class="auth-form-content">
         <div class="form-group">
-          <label for="companySelect">Empresa</label>
+          <label for="companySelect">1. Seleccionar Empresa</label>
           <select id="companySelect" required>
             <option value="demo-corp">TechInnovate HQ (Empresa Demo)</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="playerName">Tu Nombre Completo</label>
-          <input type="text" id="playerName" placeholder="Ej. Diego Zúñiga" required autofocus>
+          <label for="employeeSelect">2. Funcionario Registrado (o Nuevo)</label>
+          <select id="employeeSelect">
+            <option value="new">+ Registrar Nuevo Funcionario</option>
+          </select>
         </div>
 
-        <div class="form-group">
-          <label for="playerRole">Tu Puesto / Departamento</label>
-          <select id="playerRole">
-            <option value="Nuevo Ingreso (Onboarding)">🌱 Nuevo Ingreso (Onboarding)</option>
-            <option value="Ingeniería de Software">💻 Ingeniería de Software</option>
-            <option value="Diseño de Producto">🎨 Diseño de Producto</option>
-            <option value="Recursos Humanos">🤝 Recursos Humanos</option>
-            <option value="Operaciones & IT">⚡ Operaciones & IT</option>
-            <option value="Gerente / Director">👔 Gerente / Director</option>
-          </select>
+        <div id="newEmployeeFields">
+          <div class="form-group">
+            <label for="playerName">Tu Nombre Completo</label>
+            <input type="text" id="playerName" placeholder="Ej. Diego Zúñiga" required>
+          </div>
+
+          <div class="form-group">
+            <label for="playerEmail">Correo Corporativo</label>
+            <input type="email" id="playerEmail" placeholder="diego@miempresa.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="playerDeptSelect">Tu Dependencia Asignada</label>
+            <select id="playerDeptSelect"></select>
+          </div>
+
+          <div class="form-group">
+            <label for="playerRole">Tu Cargo o Puesto</label>
+            <input type="text" id="playerRole" placeholder="Ej. Ingeniero de Software Lead" value="Especialista">
+          </div>
         </div>
 
         <div class="form-group">
@@ -81,28 +93,43 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-primary">Entrar a la Oficina 3D 🚀</button>
+        <button type="submit" class="btn-primary">Entrar a la Sede 3D 🚀</button>
       </form>
 
-      <!-- Formulario 2: Registro de Nueva Empresa (B2B) -->
+      <!-- Formulario 2: Constructor de Empresa (Estilo Roblox) -->
       <form id="newCompanyForm" class="auth-form-content hidden">
         <div class="form-group">
           <label for="newCompanyName">Nombre de tu Empresa u Organización</label>
-          <input type="text" id="newCompanyName" placeholder="Ej. Acme Studios Corp" required>
+          <input type="text" id="newCompanyName" placeholder="Ej. Corporación Banco Futuro" required>
         </div>
 
         <div class="form-group">
-          <label for="adminEmail">Correo Corporativo del Administrador / RRHH</label>
-          <input type="email" id="adminEmail" placeholder="ejemplo@acme.com" required>
+          <label for="adminEmail">Correo del Administrador / RRHH</label>
+          <input type="email" id="adminEmail" placeholder="gerencia@bancofuturo.com" required>
         </div>
 
-        <div class="b2b-features-hint">
-          <p>✔️ Crea tu sede virtual 3D privada al instante.</p>
-          <p>✔️ NPCs de Recursos Humanos, TI e Ingeniería incluidos.</p>
-          <p>✔️ Seguimiento persistente del progreso de tus empleados.</p>
+        <div class="form-group">
+          <label for="employeeCountExpected">Número Total de Funcionarios</label>
+          <input type="number" id="employeeCountExpected" min="1" max="1000" value="25" required>
         </div>
 
-        <button type="submit" class="btn-primary" style="background: #10b981;">Crear Sede 3D para mi Empresa ✨</button>
+        <div class="form-group">
+          <label>Dependencias y Oficinas a Construir en 3D:</label>
+          <div class="dept-tag-input-wrapper">
+            <input type="text" id="customDeptInput" placeholder="Ej. Presidencia, Finanzas, Jurídica...">
+            <button type="button" id="addDeptBtn" class="btn-add-dept">+ Agregar</button>
+          </div>
+          <div id="deptTagsContainer" class="dept-tags-container">
+            <span class="dept-tag" data-name="Presidencia">Presidencia <button type="button" class="remove-tag">×</button></span>
+            <span class="dept-tag" data-name="Recursos Humanos">Recursos Humanos <button type="button" class="remove-tag">×</button></span>
+            <span class="dept-tag" data-name="Tecnología & TI">Tecnología & TI <button type="button" class="remove-tag">×</button></span>
+            <span class="dept-tag" data-name="Operaciones">Operaciones <button type="button" class="remove-tag">×</button></span>
+            <span class="dept-tag" data-name="Cafetería Lounge">Cafetería Lounge <button type="button" class="remove-tag">×</button></span>
+          </div>
+          <small class="field-hint">💡 Cada dependencia construirá una oficina privada en 3D con un NPC líder.</small>
+        </div>
+
+        <button type="submit" class="btn-primary" style="background: #10b981;">Construir Sede 3D Personalizada ✨</button>
       </form>
     </div>
   </div>

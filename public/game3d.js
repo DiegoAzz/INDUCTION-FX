@@ -480,27 +480,138 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 
 // ----------------------------------------------------
-// GESTIÓN DE EMPRESAS Y PERSISTENCIA (LOCALSTORAGE)
+// GESTIÓN DE EMPRESAS Y EMPLEADOS (ESTILO ROBLOX BUILDER)
 // ----------------------------------------------------
+const employeeSelect = document.getElementById('employeeSelect');
+const newEmployeeFields = document.getElementById('newEmployeeFields');
+const playerEmail = document.getElementById('playerEmail');
+const playerDeptSelect = document.getElementById('playerDeptSelect');
+const customDeptInput = document.getElementById('customDeptInput');
+const addDeptBtn = document.getElementById('addDeptBtn');
+const deptTagsContainer = document.getElementById('deptTagsContainer');
 
-// Cargar lista de empresas en el <select>
+// Constructor de Tags de Dependencias en el Registro
+if (addDeptBtn && customDeptInput) {
+  addDeptBtn.addEventListener('click', () => {
+    const val = customDeptInput.value.trim();
+    if (val) {
+      addDeptTag(val);
+      customDeptInput.value = '';
+    }
+  });
+
+  customDeptInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addDeptBtn.click();
+    }
+  });
+}
+
+function addDeptTag(name) {
+  const span = document.createElement('span');
+  span.className = 'dept-tag';
+  span.dataset.name = name;
+  span.innerHTML = `${name} <button type="button" class="remove-tag">×</button>`;
+  span.querySelector('.remove-tag').addEventListener('click', () => span.remove());
+  deptTagsContainer.appendChild(span);
+}
+
+// Inicializar botones de eliminación en tags predeterminados
+if (deptTagsContainer) {
+  deptTagsContainer.querySelectorAll('.remove-tag').forEach(btn => {
+    btn.addEventListener('click', (e) => e.target.closest('.dept-tag').remove());
+  });
+}
+
+function getSelectedDepartments() {
+  const tags = deptTagsContainer.querySelectorAll('.dept-tag');
+  return Array.from(tags).map(t => t.dataset.name);
+}
+
+// Cargar lista de empresas y funcionarios
+let companiesCache = {};
+
 async function loadCompanies() {
   try {
     const res = await fetch('/api/companies');
     const companies = await res.json();
     companySelect.innerHTML = '';
+    companiesCache = {};
+
     companies.forEach(c => {
+      companiesCache[c.id] = c;
       const opt = document.createElement('option');
       opt.value = c.id;
-      opt.textContent = `${c.name} (${c.id})`;
+      opt.textContent = `${c.name} (${c.departmentCount || 0} dep. • ${c.employeeCount || 0} func.)`;
       companySelect.appendChild(opt);
     });
+
+    if (companies.length > 0) {
+      await loadCompanyDetails(companies[0].id);
+    }
   } catch (err) {
     console.error('Error cargando empresas:', err);
   }
 }
 
-// Tabs de Login vs Registro Empresa
+companySelect.addEventListener('change', () => loadCompanyDetails(companySelect.value));
+
+async function loadCompanyDetails(companyId) {
+  try {
+    const res = await fetch(`/api/companies/${companyId}`);
+    const company = await res.json();
+    if (!company) return;
+
+    // Actualizar lista de dependencias para el nuevo empleado
+    playerDeptSelect.innerHTML = '';
+    (company.departments || []).forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.name;
+      opt.textContent = d.name;
+      playerDeptSelect.appendChild(opt);
+    });
+
+    // Actualizar lista de funcionarios registrados
+    employeeSelect.innerHTML = '<option value="new">+ Registrar Nuevo Funcionario</option>';
+    const employees = Object.values(company.employees || {});
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.email || emp.name;
+      opt.textContent = `👤 ${emp.name} — ${emp.role} (${emp.department})`;
+      opt.dataset.json = JSON.stringify(emp);
+      employeeSelect.appendChild(opt);
+    });
+
+    // Controlar campos visibles
+    handleEmployeeSelectChange();
+  } catch (err) {
+    console.error('Error cargando detalle de empresa:', err);
+  }
+}
+
+employeeSelect.addEventListener('change', handleEmployeeSelectChange);
+
+function handleEmployeeSelectChange() {
+  const isNew = employeeSelect.value === 'new';
+  if (isNew) {
+    newEmployeeFields.style.display = 'block';
+    document.getElementById('playerName').value = '';
+    playerEmail.value = '';
+  } else {
+    newEmployeeFields.style.display = 'none';
+    const opt = employeeSelect.selectedOptions[0];
+    if (opt && opt.dataset.json) {
+      const emp = JSON.parse(opt.dataset.json);
+      document.getElementById('playerName').value = emp.name;
+      playerEmail.value = emp.email || '';
+      document.getElementById('playerRole').value = emp.role || 'Funcionario';
+      playerDeptSelect.value = emp.department || '';
+    }
+  }
+}
+
+// Tabs
 tabLoginBtn.addEventListener('click', () => {
   tabLoginBtn.classList.add('active');
   tabRegisterCompanyBtn.classList.remove('active');
@@ -515,24 +626,32 @@ tabRegisterCompanyBtn.addEventListener('click', () => {
   employeeLoginForm.classList.add('hidden');
 });
 
-// Registrar nueva Empresa B2B
+// Registrar nueva Empresa B2B (Estilo Roblox)
 newCompanyForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('newCompanyName').value.trim();
   const adminEmail = document.getElementById('adminEmail').value.trim();
+  const employeeCountExpected = document.getElementById('employeeCountExpected').value;
+  const departmentsList = getSelectedDepartments();
+
+  if (departmentsList.length === 0) {
+    alert('Por favor agrega al menos una dependencia para tu empresa.');
+    return;
+  }
 
   try {
     const res = await fetch('/api/companies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, adminEmail })
+      body: JSON.stringify({ name, adminEmail, employeeCountExpected, departmentsList })
     });
     const data = await res.json();
 
     if (data.success) {
-      alert(`¡Empresa "${name}" creada con éxito! Ahora puedes ingresar a tu oficina 3D.`);
+      alert(`¡Sede 3D de "${name}" construida con éxito con ${departmentsList.length} dependencias!`);
       await loadCompanies();
       companySelect.value = data.company.id;
+      await loadCompanyDetails(data.company.id);
       tabLoginBtn.click();
     } else {
       alert(data.error || 'Error registrando empresa');
@@ -542,25 +661,33 @@ newCompanyForm.addEventListener('submit', async (e) => {
   }
 });
 
-// Ingreso de Empleado con Persistencia
+// Ingreso de Funcionario
 employeeLoginForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const companyId = companySelect.value;
+  const isNew = employeeSelect.value === 'new';
   const name = document.getElementById('playerName').value.trim();
-  const role = document.getElementById('playerRole').value;
+  const email = playerEmail.value.trim() || (isNew ? '' : employeeSelect.value);
+  const role = document.getElementById('playerRole').value.trim();
+  const department = playerDeptSelect.value;
   const color = document.querySelector('input[name="avatarColor"]:checked').value;
 
-  // Guardar en localStorage para persistencia
-  localStorage.setItem('induction_session', JSON.stringify({ companyId, name, role, color }));
+  if (!name) {
+    alert('Por favor ingresa tu nombre');
+    return;
+  }
 
-  loginPlayer(companyId, name, role, color);
+  // Guardar sesión en localStorage
+  localStorage.setItem('induction_session', JSON.stringify({ companyId, name, email, role, department, color }));
+
+  loginPlayer(companyId, name, email, role, department, color);
 });
 
-function loginPlayer(companyId, name, role, color) {
-  socket.emit('player:join', { companyId, name, role, color });
+function loginPlayer(companyId, name, email, role, department, color) {
+  socket.emit('player:join', { companyId, name, email, role, department, color });
   authModal.classList.add('hidden');
   gameContainer.classList.remove('hidden');
-  displayEmployeeName.textContent = `${name} • ${role}`;
+  displayEmployeeName.textContent = `${name} • ${role} (${department || 'General'})`;
   handleResize();
 }
 
@@ -792,11 +919,25 @@ function playRadioBeep(isStart = true) {
   }
 }
 
-// Inicializar micrófono en segundo plano silenciado
+// Reconstrucción del mapa 3D en caliente (cuando se agregan dependencias)
+socket.on('office:rebuild_layout', (npcs) => {
+  buildNpcWorld(npcs);
+  renderChecklist();
+  populateAdminForm();
+});
+
+// Inicializar micrófono con cancelación estricta de eco y ruido
 async function ensureMicrophone() {
   if (!localStream) {
     try {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
       // Mantener tracks en silencio por defecto hasta pulsar PTT
       localStream.getAudioTracks().forEach(t => t.enabled = false);
 
