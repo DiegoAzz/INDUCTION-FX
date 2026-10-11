@@ -208,26 +208,57 @@ app.post('/api/companies/:companyId/employees', async (req, res) => {
   }
 });
 
-// Agregar una nueva dependencia a la oficina 3D en caliente
-app.post('/api/companies/:companyId/departments', (req, res) => {
+// Agregar una nueva dependencia a la oficina 3D
+app.post('/api/companies/:companyId/departments', async (req, res) => {
   const { companyId } = req.params;
-  const { name, description } = req.body;
+  const { name, description, leaderName, leaderRole, color } = req.body;
 
-  const company = db.companies[companyId];
-  if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+  if (!name) return res.status(400).json({ error: 'Nombre de dependencia requerido' });
 
-  company.departments.push({
-    name: name.trim(),
-    description: description || `Dependencia de ${name.trim()}`
-  });
+  try {
+    const newDept = await dbManager.addDepartment(companyId, {
+      name: name.trim(),
+      description: description || `Área de ${name.trim()}`,
+      leaderName,
+      leaderRole,
+      color
+    });
 
-  company.npcs = generateDepartmentLayout(company.departments);
-  saveDatabase(db);
+    const updatedCompany = await dbManager.getCompanyBySlug(companyId);
+    if (updatedCompany) {
+      io.to(companyId).emit('office:rebuild_layout', updatedCompany.npcs);
+    }
 
-  // Notificar a todos los empleados en la oficina 3D para que el mundo se reconstruya al instante
-  io.to(companyId).emit('office:rebuild_layout', company.npcs);
+    res.status(201).json({ success: true, department: newDept });
+  } catch (err) {
+    res.status(500).json({ error: 'Error agregando dependencia' });
+  }
+});
 
-  res.status(201).json({ success: true, departments: company.departments, npcs: company.npcs });
+// Eliminar una dependencia
+app.delete('/api/companies/:companyId/departments/:deptId', async (req, res) => {
+  const { companyId, deptId } = req.params;
+  try {
+    await dbManager.deleteDepartment(companyId, deptId);
+    const updatedCompany = await dbManager.getCompanyBySlug(companyId);
+    if (updatedCompany) {
+      io.to(companyId).emit('office:rebuild_layout', updatedCompany.npcs);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error eliminando dependencia' });
+  }
+});
+
+// Eliminar un funcionario
+app.delete('/api/companies/:companyId/employees/:email', async (req, res) => {
+  const { companyId, email } = req.params;
+  try {
+    await dbManager.deleteEmployee(companyId, email);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error eliminando funcionario' });
+  }
 });
 
 // ----------------------------------------------------------------

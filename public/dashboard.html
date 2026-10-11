@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Induction - Dashboard Corporativo B2B</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { overflow-y: auto !important; }
+    .dash-container { max-width: 1200px; margin: 0 auto; padding: 24px 20px; }
+    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .dash-title-group h1 { font-size: 24px; font-weight: 800; }
+    .dash-title-group p { font-size: 13px; color: var(--text-muted); }
+    .dash-actions { display: flex; gap: 12px; align-items: center; }
+    .dash-company-picker { background: var(--bg-card); border: 1px solid var(--border); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px; outline: none; }
+    .btn-goto-3d { background: var(--primary); color: #fff; border: none; padding: 11px 20px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 8px; }
+    .btn-goto-3d:hover { background: var(--primary-hover); }
+
+    /* Métricas */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; }
+    .stat-card span { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .stat-card h2 { font-size: 28px; font-weight: 800; margin-top: 6px; color: var(--primary); }
+
+    /* Secciones */
+    .dash-sections { display: grid; grid-template-columns: 1fr; gap: 32px; }
+    .dash-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+    .dash-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+    .dash-box-header h3 { font-size: 18px; font-weight: 700; }
+
+    /* Tabla de Funcionarios */
+    .data-table-wrapper { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    .data-table th { background: var(--bg-surface); padding: 12px 16px; color: var(--text-muted); font-weight: 600; }
+    .data-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .btn-delete { background: rgba(239, 68, 68, 0.15); border: 1px solid #ef4444; color: #fca5a5; padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .btn-delete:hover { background: #ef4444; color: #fff; }
+
+    /* Grid de Dependencias 3D */
+    .depts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .dept-card-item { background: var(--bg-surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; border-left: 4px solid var(--dept-color, var(--primary)); }
+    .dept-card-item h4 { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .dept-card-item p { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 12px; }
+    .dept-card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="dash-container">
+    <!-- Header -->
+    <header class="dash-header">
+      <div class="dash-title-group">
+        <span class="badge">Portal de Administración Corporativa</span>
+        <h1 id="dashCompanyNameTitle">Dashboard de Empresa</h1>
+        <p>Gestiona las dependencias 3D, la nómina de funcionarios y el progreso de inducción.</p>
+      </div>
+
+      <div class="dash-actions">
+        <select id="companySelectDash" class="dash-company-picker"></select>
+        <a href="/" class="btn-goto-3d">🎮 Entrar a la Sede 3D</a>
+      </div>
+    </header>
+
+    <!-- Métricas -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Funcionarios Registrados</span>
+        <h2 id="metricEmployeesCount">0</h2>
+      </div>
+      <div class="stat-card">
+        <span>Dependencias / Oficinas 3D</span>
+        <h2 id="metricDeptsCount" style="color: #10b981;">0</h2>
+      </div>
+      <div class="stat-card">
+        <span>Cupo de Funcionarios</span>
+        <h2 id="metricExpectedCount" style="color: #f59e0b;">0</h2>
+      </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div class="dash-sections">
+      <!-- 1. Gestión de Dependencias (Roblox Builder) -->
+      <section class="dash-box">
+        <div class="dash-box-header">
+          <div>
+            <h3>🏢 Dependencias y Oficinas en el Mundo 3D</h3>
+            <p style="font-size: 12px; color: var(--text-muted);">Cada dependencia genera una oficina privada en 3D con un NPC líder.</p>
+          </div>
+          <button id="openNewDeptModalBtn" class="btn-primary" style="width: auto; padding: 10px 18px;">+ Crear Dependencia 3D</button>
+        </div>
+
+        <div id="departmentsGrid" class="depts-grid"></div>
+      </section>
+
+      <!-- 2. Nómina de Funcionarios Registrados -->
+      <section class="dash-box">
+        <div class="dash-box-header">
+          <div>
+            <h3>👥 Nómina de Funcionarios Registrados</h3>
+            <p style="font-size: 12px; color: var(--text-muted);">Gestiona los accesos y roles de los empleados en la base de datos PostgreSQL.</p>
+          </div>
+          <button id="openNewEmpModalBtn" class="btn-primary" style="width: auto; padding: 10px 18px; background: #10b981;">+ Registrar Funcionario</button>
+        </div>
+
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Funcionario</th>
+                <th>Correo Corporativo</th>
+                <th>Cargo / Rol</th>
+                <th>Dependencia</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="employeesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modal Crear Dependencia -->
+  <div id="modalNewDept" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="badge">Constructor 3D</span>
+        <h2>Crear Nueva Dependencia</h2>
+        <p>Añade una oficina personalizada a la sede de la empresa.</p>
+      </div>
+      <form id="formNewDept">
+        <div class="form-group">
+          <label for="newDeptName">Nombre de la Dependencia</label>
+          <input type="text" id="newDeptName" placeholder="Ej. Presidencia, Finanzas, Jurídica..." required>
+        </div>
+        <div class="form-group">
+          <label for="newDeptLeader">Nombre del Líder / NPC</label>
+          <input type="text" id="newDeptLeader" placeholder="Ej. Dra. Laura Méndez" required>
+        </div>
+        <div class="form-group">
+          <label for="newDeptRole">Cargo del Líder</label>
+          <input type="text" id="newDeptRole" placeholder="Ej. Directora General Jurídica" required>
+        </div>
+        <div class="form-group">
+          <label for="newDeptDesc">Información de Inducción</label>
+          <textarea id="newDeptDesc" rows="3" placeholder="Políticas y funciones clave de esta dependencia..." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="newDeptColor">Color de Alfombra 3D</label>
+          <select id="newDeptColor">
+            <option value="#8B5CF6">Morado Ejecutivo (#8B5CF6)</option>
+            <option value="#06B6D4">Cyan Tecnológico (#06B6D4)</option>
+            <option value="#3B82F6">Azul Corporativo (#3B82F6)</option>
+            <option value="#F59E0B">Naranja Creativo (#F59E0B)</option>
+            <option value="#10B981">Verde Finanzas (#10B981)</option>
+            <option value="#EC4899">Rosa Lounge (#EC4899)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary">Construir Oficina en 3D 🚀</button>
+        <button type="button" id="closeNewDeptBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Registrar Funcionario -->
+  <div id="modalNewEmp" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="badge">Nómina PostgreSQL</span>
+        <h2>Registrar Funcionario</h2>
+        <p>Crea el usuario corporativo para que pueda ingresar a la sede 3D.</p>
+      </div>
+      <form id="formNewEmp">
+        <div class="form-group">
+          <label for="newEmpName">Nombre Completo</label>
+          <input type="text" id="newEmpName" placeholder="Ej. Mariana Restrepo" required>
+        </div>
+        <div class="form-group">
+          <label for="newEmpEmail">Correo Corporativo</label>
+          <input type="email" id="newEmpEmail" placeholder="mariana@empresa.com" required>
+        </div>
+        <div class="form-group">
+          <label for="newEmpDeptSelect">Dependencia Asignada</label>
+          <select id="newEmpDeptSelect" required></select>
+        </div>
+        <div class="form-group">
+          <label for="newEmpRole">Cargo o Puesto</label>
+          <input type="text" id="newEmpRole" placeholder="Ej. Analista Senior" required>
+        </div>
+        <button type="submit" class="btn-primary" style="background: #10b981;">Guardar Funcionario en BD 💾</button>
+        <button type="button" id="closeNewEmpBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

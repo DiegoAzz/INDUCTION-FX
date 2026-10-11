@@ -229,6 +229,117 @@ const dbManager = {
     }
   },
 
+  // Eliminar funcionario
+  async deleteEmployee(companySlug, employeeEmail) {
+    if (usePostgres) {
+      try {
+        const company = await prisma.company.findUnique({ where: { slug: companySlug } });
+        if (company) {
+          await prisma.employee.delete({
+            where: {
+              companyId_email: {
+                companyId: company.id,
+                email: employeeEmail
+              }
+            }
+          });
+          return true;
+        }
+      } catch (err) {
+        console.error('[DB Error] deleteEmployee postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const company = fallback.companies[companySlug];
+    if (company && company.employees[employeeEmail]) {
+      delete company.employees[employeeEmail];
+      saveFallbackData(fallback);
+      return true;
+    }
+    return false;
+  },
+
+  // Agregar Dependencia a la empresa
+  async addDepartment(companySlug, deptData) {
+    if (usePostgres) {
+      try {
+        const company = await prisma.company.findUnique({
+          where: { slug: companySlug },
+          include: { departments: true }
+        });
+        if (company) {
+          const index = company.departments.length;
+          const radius = 24;
+          const angle = (index / (index + 1)) * Math.PI * 2 - Math.PI / 2;
+          const posX = Math.round(Math.cos(angle) * radius);
+          const posZ = Math.round(Math.sin(angle) * radius);
+
+          const newDept = await prisma.department.create({
+            data: {
+              companyId: company.id,
+              name: deptData.name,
+              description: deptData.description || `Área de ${deptData.name}`,
+              leaderName: deptData.leaderName || `Líder de ${deptData.name}`,
+              leaderRole: deptData.leaderRole || `Director(a) de ${deptData.name}`,
+              avatarUrl: deptData.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+              color: deptData.color || '#3B82F6',
+              posX: posX,
+              posZ: posZ
+            }
+          });
+          return newDept;
+        }
+      } catch (err) {
+        console.error('[DB Error] addDepartment postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const company = fallback.companies[companySlug];
+    if (company) {
+      const index = (company.departments || []).length;
+      const radius = 24;
+      const angle = (index / (index + 1)) * Math.PI * 2 - Math.PI / 2;
+      const newNpc = {
+        id: `dept-${Date.now()}`,
+        name: deptData.leaderName || `Líder de ${deptData.name}`,
+        role: deptData.leaderRole || `Director(a) de ${deptData.name}`,
+        department: deptData.name,
+        avatarUrl: deptData.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+        x: Math.round(Math.cos(angle) * radius),
+        z: Math.round(Math.sin(angle) * radius),
+        color: deptData.color || '#3B82F6',
+        info: deptData.description || `Área de ${deptData.name}`
+      };
+      company.departments.push({ name: deptData.name, description: deptData.description });
+      company.npcs.push(newNpc);
+      saveFallbackData(fallback);
+      return newNpc;
+    }
+  },
+
+  // Eliminar Dependencia
+  async deleteDepartment(companySlug, departmentId) {
+    if (usePostgres) {
+      try {
+        await prisma.department.delete({ where: { id: departmentId } });
+        return true;
+      } catch (err) {
+        console.error('[DB Error] deleteDepartment postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const company = fallback.companies[companySlug];
+    if (company) {
+      company.npcs = company.npcs.filter(n => n.id !== departmentId);
+      saveFallbackData(fallback);
+      return true;
+    }
+    return false;
+  },
+
   // 5. Guardar Tarea de Inducción Completada
   async recordTaskProgress(companySlug, employeeEmail, npcId) {
     if (usePostgres) {
