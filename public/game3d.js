@@ -663,6 +663,11 @@ async function initApp() {
 initApp();
 window.addEventListener('DOMContentLoaded', initApp);
 
+function updatePlayerCount() {
+  const count = Object.keys(players || {}).length || 1;
+  if (playerCountEl) playerCountEl.textContent = count;
+}
+
 // ----------------------------------------------------
 // SOCKETS Y MULTIJUGADOR
 // ----------------------------------------------------
