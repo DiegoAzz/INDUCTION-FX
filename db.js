@@ -54,12 +54,16 @@ const dbManager = {
         });
         return companies.map(c => ({
           id: c.slug,
+          slug: c.slug,
           uuid: c.id,
           name: c.name,
           adminEmail: c.adminEmail,
+          adminPassword: c.adminPassword || 'admin123',
+          status: c.status || 'active',
           departmentCount: c.departments.length,
           employeeCount: c.employees.length,
-          employeeCountExpected: c.employeeCountExpected
+          employeeCountExpected: c.employeeCountExpected,
+          createdAt: c.createdAt
         }));
       } catch (err) {
         console.error('[DB Error] getCompanies postgres:', err);
@@ -69,11 +73,15 @@ const dbManager = {
     const fallback = loadFallbackData();
     return Object.values(fallback.companies || {}).map(c => ({
       id: c.id,
+      slug: c.id,
       name: c.name,
       adminEmail: c.adminEmail,
+      adminPassword: c.adminPassword || 'admin123',
+      status: c.status || 'active',
       departmentCount: (c.departments || []).length,
       employeeCount: Object.keys(c.employees || {}).length,
-      employeeCountExpected: c.employeeCountExpected || 10
+      employeeCountExpected: c.employeeCountExpected || 10,
+      createdAt: c.createdAt || new Date().toISOString()
     }));
   },
 
@@ -100,6 +108,7 @@ const dbManager = {
               id: e.id,
               name: e.name,
               email: e.email,
+              password: e.password || '123456',
               role: e.role,
               department: c.departments.find(d => d.id === e.departmentId)?.name || 'General',
               color: e.color || '#3B82F6'
@@ -111,9 +120,12 @@ const dbManager = {
 
           return {
             id: c.slug,
+            slug: c.slug,
             uuid: c.id,
             name: c.name,
             adminEmail: c.adminEmail,
+            adminPassword: c.adminPassword || 'admin123',
+            status: c.status || 'active',
             employeeCountExpected: c.employeeCountExpected,
             departments: c.departments,
             npcs: c.departments.map((d, idx) => {
@@ -148,6 +160,8 @@ const dbManager = {
   // 3. Crear Empresa con Dependencias
   async createCompany(data, generatedNpcs) {
     const slug = data.slug;
+    const adminPassword = data.adminPassword || 'admin123';
+    const status = data.status || 'active';
 
     if (usePostgres) {
       try {
@@ -156,6 +170,8 @@ const dbManager = {
             slug: slug,
             name: data.name,
             adminEmail: data.adminEmail,
+            adminPassword: adminPassword,
+            status: status,
             employeeCountExpected: data.employeeCountExpected || 25,
             departments: {
               create: generatedNpcs.map(npc => ({
@@ -181,12 +197,16 @@ const dbManager = {
     const fallback = loadFallbackData();
     fallback.companies[slug] = {
       id: slug,
+      slug: slug,
       name: data.name,
       adminEmail: data.adminEmail,
+      adminPassword: adminPassword,
+      status: status,
       employeeCountExpected: data.employeeCountExpected || 25,
       departments: data.departments,
       npcs: generatedNpcs,
-      employees: {}
+      employees: {},
+      createdAt: new Date().toISOString()
     };
     saveFallbackData(fallback);
     return fallback.companies[slug];
@@ -194,10 +214,12 @@ const dbManager = {
 
   // 4. Registrar Funcionario en la Empresa
   async createEmployee(companySlug, empData) {
+    const password = empData.password || '123456';
+
     if (usePostgres) {
       try {
-        const company = await prisma.company.findUnique({
-          where: { slug: companySlug },
+        const company = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] },
           include: { departments: true }
         });
         if (company) {
@@ -213,7 +235,8 @@ const dbManager = {
               name: empData.name,
               role: empData.role,
               departmentId: dept?.id,
-              color: empData.color
+              color: empData.color,
+              password: password
             },
             create: {
               companyId: company.id,
@@ -221,7 +244,8 @@ const dbManager = {
               name: empData.name,
               email: empData.email,
               role: empData.role,
-              color: empData.color
+              color: empData.color,
+              password: password
             }
           });
           return emp;
@@ -236,6 +260,7 @@ const dbManager = {
     if (company) {
       company.employees[empData.email] = {
         ...empData,
+        password: password,
         visitedNPCs: []
       };
       saveFallbackData(fallback);
@@ -395,6 +420,107 @@ const dbManager = {
         saveFallbackData(fallback);
       }
     }
+  },
+
+  // 6. Super Admin Verificación
+  async verifySuperAdmin(email, password) {
+    const defaultMasterEmail = process.env.SUPERADMIN_EMAIL || 'admin@induction.com';
+    const defaultMasterPass = process.env.SUPERADMIN_PASS || 'Induction2026!*';
+
+    if (email === defaultMasterEmail && password === defaultMasterPass) {
+      return { email: defaultMasterEmail, name: 'Super Admin Master' };
+    }
+
+    if (usePostgres) {
+      try {
+        const sa = await prisma.superAdmin.findUnique({ where: { email } });
+        if (sa && sa.password === password) {
+          return { email: sa.email, name: sa.name };
+        }
+      } catch (e) { }
+    }
+    return null;
+  },
+
+  // 7. Eliminar Empresa
+  async deleteCompany(companySlug) {
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          await prisma.company.delete({ where: { id: comp.id } });
+          return true;
+        }
+      } catch (err) {
+        console.error('[DB Error] deleteCompany postgres:', err);
+      }
+    }
+    const fallback = loadFallbackData();
+    if (fallback.companies[companySlug]) {
+      delete fallback.companies[companySlug];
+      saveFallbackData(fallback);
+      return true;
+    }
+    return false;
+  },
+
+  // 8. Cambiar estado de empresa (active / suspended)
+  async updateCompanyStatus(companySlug, status) {
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          await prisma.company.update({
+            where: { id: comp.id },
+            data: { status }
+          });
+          return true;
+        }
+      } catch (err) {
+        console.error('[DB Error] updateCompanyStatus postgres:', err);
+      }
+    }
+    const fallback = loadFallbackData();
+    if (fallback.companies[companySlug]) {
+      fallback.companies[companySlug].status = status;
+      saveFallbackData(fallback);
+      return true;
+    }
+    return false;
+  },
+
+  // 9. Verificar Login de Administrador de Empresa
+  async verifyCompanyAdmin(companySlug, email, password) {
+    const comp = await this.getCompanyBySlug(companySlug);
+    if (!comp) return null;
+    if (comp.status === 'suspended') {
+      return { error: 'Empresa suspendida. Comuníquese con administración general.' };
+    }
+    if (comp.adminEmail.toLowerCase() === email.toLowerCase() && comp.adminPassword === password) {
+      return { success: true, company: comp };
+    }
+    return null;
+  },
+
+  // 10. Verificar Login de Empleado
+  async verifyEmployeeLogin(companySlug, email, password) {
+    const comp = await this.getCompanyBySlug(companySlug);
+    if (!comp) return null;
+    if (comp.status === 'suspended') {
+      return { error: 'La sede virtual de esta empresa se encuentra inactiva o suspendida.' };
+    }
+    const employee = comp.employees[email];
+    if (!employee) return null;
+
+    if (employee.password && employee.password !== password) {
+      return { error: 'Contraseña incorrecta de funcionario' };
+    }
+
+    return { success: true, employee, company: comp };
   }
 };
 

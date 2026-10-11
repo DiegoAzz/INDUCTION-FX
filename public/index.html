@@ -17,54 +17,30 @@
     <div class="modal-card auth-card">
       <div class="auth-header">
         <div class="badge-row">
-          <span class="badge">Induction Enterprise SaaS</span>
+          <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">SaaS Enterprise</span>
         </div>
-        <h2>Sede Virtual Corporativa</h2>
-        <p>Vive tu inducción en un entorno 3D interactivo con NPCs y compañeros en vivo.</p>
+        <h2 id="loginModalTitle">Sede Virtual Corporativa</h2>
+        <p id="loginModalSubtitle">Ingresa con tus credenciales de funcionario para conectarte a tu oficina 3D.</p>
       </div>
 
-      <!-- Selector de Tipo de Acceso -->
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab-btn active" id="tabLoginBtn">👤 Entrar como Empleado</button>
-        <button type="button" class="auth-tab-btn" id="tabRegisterCompanyBtn">🏢 Registrar Empresa</button>
-      </div>
-
-      <!-- Formulario 1: Ingreso de Funcionario -->
+      <!-- Formulario: Ingreso de Funcionario -->
       <form id="employeeLoginForm" class="auth-form-content">
-        <div class="form-group">
-          <label for="companySelect">1. Seleccionar Empresa</label>
+        <div class="form-group" id="companySelectGroup">
+          <label for="companySelect">Empresa / Sede Virtual</label>
           <select id="companySelect" required>
-            <option value="demo-corp">TechInnovate HQ (Empresa Demo)</option>
+            <option value="demo-corp">Cargando empresas...</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="employeeSelect">2. Funcionario Registrado (o Nuevo)</label>
-          <select id="employeeSelect">
-            <option value="new">+ Registrar Nuevo Funcionario</option>
-          </select>
+          <label for="playerEmail">Correo Corporativo</label>
+          <input type="email" id="playerEmail" placeholder="tu.nombre@empresa.com" required>
         </div>
 
-        <div id="newEmployeeFields">
-          <div class="form-group">
-            <label for="playerName">Tu Nombre Completo</label>
-            <input type="text" id="playerName" placeholder="Ej. Diego Zúñiga" required>
-          </div>
-
-          <div class="form-group">
-            <label for="playerEmail">Correo Corporativo</label>
-            <input type="email" id="playerEmail" placeholder="diego@miempresa.com" required>
-          </div>
-
-          <div class="form-group">
-            <label for="playerDeptSelect">Tu Dependencia Asignada</label>
-            <select id="playerDeptSelect"></select>
-          </div>
-
-          <div class="form-group">
-            <label for="playerRole">Tu Cargo o Puesto</label>
-            <input type="text" id="playerRole" placeholder="Ej. Ingeniero de Software Lead" value="Especialista">
-          </div>
+        <div class="form-group">
+          <label for="playerPassword">Contraseña de Funcionario</label>
+          <input type="password" id="playerPassword" placeholder="••••••••" required>
+          <small style="color: var(--text-muted); font-size: 11px;">Credencial asignada por la administración de tu empresa.</small>
         </div>
 
         <div class="form-group">
@@ -93,43 +69,11 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-primary">Entrar a la Sede 3D 🚀</button>
-      </form>
+        <button type="submit" class="btn-primary" style="margin-top: 10px;">Entrar a la Sede 3D 🚀</button>
 
-      <!-- Formulario 2: Constructor de Empresa (Estilo Roblox) -->
-      <form id="newCompanyForm" class="auth-form-content hidden">
-        <div class="form-group">
-          <label for="newCompanyName">Nombre de tu Empresa u Organización</label>
-          <input type="text" id="newCompanyName" placeholder="Ej. Corporación Banco Futuro" required>
+        <div style="text-align: center; margin-top: 18px; font-size: 12px; color: var(--text-muted);">
+          ¿Eres Administrador? <a href="/dashboard.html" style="color: #60a5fa; text-decoration: none; font-weight: 600;">Panel RRHH</a> • <a href="/superadmin.html" style="color: #c084fc; text-decoration: none; font-weight: 600;">Super Admin</a>
         </div>
-
-        <div class="form-group">
-          <label for="adminEmail">Correo del Administrador / RRHH</label>
-          <input type="email" id="adminEmail" placeholder="gerencia@bancofuturo.com" required>
-        </div>
-
-        <div class="form-group">
-          <label for="employeeCountExpected">Número Total de Funcionarios</label>
-          <input type="number" id="employeeCountExpected" min="1" max="1000" value="25" required>
-        </div>
-
-        <div class="form-group">
-          <label>Dependencias y Oficinas a Construir en 3D:</label>
-          <div class="dept-tag-input-wrapper">
-            <input type="text" id="customDeptInput" placeholder="Ej. Presidencia, Finanzas, Jurídica...">
-            <button type="button" id="addDeptBtn" class="btn-add-dept">+ Agregar</button>
-          </div>
-          <div id="deptTagsContainer" class="dept-tags-container">
-            <span class="dept-tag" data-name="Presidencia">Presidencia <button type="button" class="remove-tag">×</button></span>
-            <span class="dept-tag" data-name="Recursos Humanos">Recursos Humanos <button type="button" class="remove-tag">×</button></span>
-            <span class="dept-tag" data-name="Tecnología & TI">Tecnología & TI <button type="button" class="remove-tag">×</button></span>
-            <span class="dept-tag" data-name="Operaciones">Operaciones <button type="button" class="remove-tag">×</button></span>
-            <span class="dept-tag" data-name="Cafetería Lounge">Cafetería Lounge <button type="button" class="remove-tag">×</button></span>
-          </div>
-          <small class="field-hint">💡 Cada dependencia construirá una oficina privada en 3D con un NPC líder.</small>
-        </div>
-
-        <button type="submit" class="btn-primary" style="background: #10b981;">Construir Sede 3D Personalizada ✨</button>
       </form>
     </div>
   </div>
@@ -153,6 +97,10 @@
       </div>
 
       <div class="header-actions">
+        <!-- Botón para ir al Super Admin -->
+        <a href="/superadmin.html" class="btn-toggle-sidebar" style="text-decoration: none;" title="Portal Super Administrador">
+          👑 <span class="hide-mobile">SuperAdmin</span>
+        </a>
         <!-- Botón para ir al Dashboard de Gestión -->
         <a href="/dashboard.html" class="btn-toggle-sidebar" style="text-decoration: none;" title="Abrir Dashboard de Gestión">
           ⚙️ <span class="hide-mobile">Dashboard</span>

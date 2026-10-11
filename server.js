@@ -167,11 +167,15 @@ app.post('/api/companies', async (req, res) => {
 
   const generatedNpcs = generateDepartmentLayout(departments);
 
+  const adminPassword = req.body.adminPassword || 'admin123';
+
   try {
     const company = await dbManager.createCompany({
       slug,
       name: name.trim(),
       adminEmail: adminEmail.trim(),
+      adminPassword: adminPassword.trim(),
+      status: 'active',
       employeeCountExpected: parseInt(employeeCountExpected, 10) || 10,
       departments: departments
     }, generatedNpcs);
@@ -181,6 +185,149 @@ app.post('/api/companies', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Error creando empresa en base de datos' });
   }
+});
+
+// ----------------------------------------------------------------
+// SUPER ADMINISTRADOR SAAS - GESTIÓN MAESTRA DE EMPRESAS CLIENTES
+// ----------------------------------------------------------------
+
+// Login de Super Administrador
+app.post('/api/superadmin/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Credenciales incompletas' });
+  }
+
+  const admin = await dbManager.verifySuperAdmin(email.trim(), password.trim());
+  if (!admin) {
+    return res.status(401).json({ error: 'Credenciales de Super Administrador inválidas' });
+  }
+
+  res.json({ success: true, user: admin });
+});
+
+// Listado de empresas para Super Administrador (con credenciales y accesos)
+app.get('/api/superadmin/companies', async (req, res) => {
+  try {
+    const companies = await dbManager.getCompanies();
+    res.json(companies);
+  } catch (err) {
+    res.status(500).json({ error: 'Error listando empresas' });
+  }
+});
+
+// Crear nueva empresa desde Super Administrador
+app.post('/api/superadmin/companies', async (req, res) => {
+  const { name, slug: customSlug, adminEmail, adminPassword, employeeCountExpected, departmentsList } = req.body;
+  if (!name || !adminEmail) {
+    return res.status(400).json({ error: 'Nombre de empresa y correo de administrador requeridos' });
+  }
+
+  const slug = (customSlug && customSlug.trim())
+    ? customSlug.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 30)
+    : name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 30) || 'empresa-' + Date.now();
+
+  let departments = [];
+  if (Array.isArray(departmentsList) && departmentsList.length > 0) {
+    departments = departmentsList.filter(d => d.trim().length > 0).map(d => ({
+      name: d.trim(),
+      description: `Área de ${d.trim()}. Procesos corporativos y normativas de nuestra dependencia.`
+    }));
+  } else {
+    departments = [
+      { name: 'Gerencia General', description: 'Dirección estratégica y objetivos corporativos.' },
+      { name: 'Recursos Humanos', description: 'Talento humano, contratos, bienestar e inducción.' },
+      { name: 'Operaciones & TI', description: 'Sistemas tecnológicos, infraestructura y logística.' },
+      { name: 'Cafetería & Bienestar', description: 'Descanso, integración y cultura laboral.' }
+    ];
+  }
+
+  const generatedNpcs = generateDepartmentLayout(departments);
+
+  try {
+    const company = await dbManager.createCompany({
+      slug,
+      name: name.trim(),
+      adminEmail: adminEmail.trim(),
+      adminPassword: (adminPassword && adminPassword.trim()) ? adminPassword.trim() : 'admin123',
+      status: 'active',
+      employeeCountExpected: parseInt(employeeCountExpected, 10) || 25,
+      departments: departments
+    }, generatedNpcs);
+
+    console.log(`[SuperAdmin] Empresa creada: ${name} (${slug})`);
+    res.status(201).json({ success: true, company });
+  } catch (err) {
+    console.error('[SuperAdmin Error] creando empresa:', err);
+    res.status(500).json({ error: 'Error creando empresa en base de datos' });
+  }
+});
+
+// Cambiar estado de empresa (activar/suspender)
+app.patch('/api/superadmin/companies/:companyId/status', async (req, res) => {
+  const { companyId } = req.params;
+  const { status } = req.body;
+  try {
+    await dbManager.updateCompanyStatus(companyId, status || 'active');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error actualizando estado de empresa' });
+  }
+});
+
+// Eliminar empresa desde Super Administrador
+app.delete('/api/superadmin/companies/:companyId', async (req, res) => {
+  const { companyId } = req.params;
+  try {
+    await dbManager.deleteCompany(companyId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Error eliminando empresa' });
+  }
+});
+
+// ----------------------------------------------------------------
+// LOGIN PARA ADMINISTRADOR DE EMPRESA (DASHBOARD)
+// ----------------------------------------------------------------
+app.post('/api/companies/:companyId/admin-login', async (req, res) => {
+  const { companyId } = req.params;
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email y contraseña requeridos' });
+  }
+
+  const authResult = await dbManager.verifyCompanyAdmin(companyId, email.trim(), password.trim());
+  if (!authResult) {
+    return res.status(401).json({ error: 'Credenciales inválidas de administrador de empresa' });
+  }
+  if (authResult.error) {
+    return res.status(403).json({ error: authResult.error });
+  }
+
+  res.json({ success: true, company: authResult.company });
+});
+
+// ----------------------------------------------------------------
+// LOGIN PARA FUNCIONARIO / EMPLEADO (SEDE VIRTUAL 3D)
+// ----------------------------------------------------------------
+app.post('/api/companies/:companyId/employee-login', async (req, res) => {
+  const { companyId } = req.params;
+  const { email, password } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Correo de funcionario requerido' });
+  }
+
+  const result = await dbManager.verifyEmployeeLogin(companyId, email.toLowerCase().trim(), (password || '').trim());
+  if (!result) {
+    return res.status(404).json({ error: 'Funcionario no registrado en esta empresa. Solicita acceso a tu administrador de RRHH.' });
+  }
+  if (result.error) {
+    return res.status(401).json({ error: result.error });
+  }
+
+  res.json({ success: true, employee: result.employee, company: result.company });
 });
 
 // Obtener datos y funcionarios de una empresa
@@ -197,7 +344,7 @@ app.get('/api/companies/:companyId', async (req, res) => {
 // Registrar un nuevo funcionario en la base de datos de una empresa
 app.post('/api/companies/:companyId/employees', async (req, res) => {
   const { companyId } = req.params;
-  const { name, email, role, department, color } = req.body;
+  const { name, email, role, department, color, password } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Nombre y correo requeridos' });
@@ -207,6 +354,7 @@ app.post('/api/companies/:companyId/employees', async (req, res) => {
     const employee = await dbManager.createEmployee(companyId, {
       name: name.trim(),
       email: email.toLowerCase().trim(),
+      password: (password && password.trim()) ? password.trim() : '123456',
       role: role || 'Funcionario',
       department: department || 'General',
       color: color || '#3B82F6'

@@ -59,7 +59,9 @@
 
       <div class="dash-actions">
         <select id="companySelectDash" class="dash-company-picker"></select>
-        <a href="/" class="btn-goto-3d">🎮 Entrar a la Sede 3D</a>
+        <button id="btnCopyEmployeeInvite" class="btn-goto-3d" style="background: #10b981; border: none; cursor: pointer;">📋 Copiar Link Empleados</button>
+        <a id="linkEnter3d" href="/" class="btn-goto-3d">🎮 Entrar a la Sede 3D</a>
+        <button id="btnAdminLogout" class="btn-logout" style="height: 38px;">Salir</button>
       </div>
     </header>
 
@@ -110,6 +112,7 @@
               <tr>
                 <th>Funcionario</th>
                 <th>Correo Corporativo</th>
+                <th>Contraseña Acceso</th>
                 <th>Cargo / Rol</th>
                 <th>Dependencia</th>
                 <th>Acciones</th>
@@ -182,6 +185,11 @@
           <input type="email" id="newEmpEmail" placeholder="mariana@empresa.com" required>
         </div>
         <div class="form-group">
+          <label for="newEmpPassword">Contraseña de Acceso para el Empleado</label>
+          <input type="text" id="newEmpPassword" value="123456" placeholder="Clave para ingresar a la sede 3D" required>
+          <small style="color: var(--text-muted); font-size: 11px;">El funcionario usará esta clave para ingresar.</small>
+        </div>
+        <div class="form-group">
           <label for="newEmpDeptSelect">Dependencia Asignada</label>
           <select id="newEmpDeptSelect" required></select>
         </div>
@@ -191,6 +199,28 @@
         </div>
         <button type="submit" class="btn-primary" style="background: #10b981;">Guardar Funcionario en BD 💾</button>
         <button type="button" id="closeNewEmpBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cancelar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Login Administrador de Empresa -->
+  <div id="companyAdminLoginModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">Acceso Corporativo</span>
+        <h2 id="loginModalCompanyName">Panel de Empresa</h2>
+        <p>Ingresa con las credenciales entregadas por el Super Administrador.</p>
+      </div>
+      <form id="formCompanyAdminLogin">
+        <div class="form-group">
+          <label for="compLoginEmail">Correo del Administrador</label>
+          <input type="email" id="compLoginEmail" placeholder="admin@miempresa.com" required>
+        </div>
+        <div class="form-group">
+          <label for="compLoginPass">Contraseña de Empresa</label>
+          <input type="password" id="compLoginPass" placeholder="••••••••••••" required>
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; margin-top: 10px; padding: 12px;">Ingresar al Panel 🚀</button>
       </form>
     </div>
   </div>

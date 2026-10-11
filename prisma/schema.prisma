@@ -13,6 +13,8 @@ model Company {
   slug                   String       @unique
   name                   String
   adminEmail             String
+  adminPassword          String       @default("admin123")
+  status                 String       @default("active")
   employeeCountExpected  Int          @default(25)
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
@@ -51,6 +53,7 @@ model Employee {
   departmentId String?
   name         String
   email        String
+  password     String       @default("123456")
   role         String       @default("Funcionario")
   color        String       @default("#3B82F6")
   createdAt    DateTime     @default(now())
@@ -76,4 +79,15 @@ model OnboardingProgress {
 
   @@unique([employeeId, departmentId])
   @@map("onboarding_progress")
+}
+
+// 5. Super Administrador de la Plataforma SaaS
+model SuperAdmin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String   @default("Super Admin")
+  createdAt DateTime @default(now())
+
+  @@map("super_admins")
 }

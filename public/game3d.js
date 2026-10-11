@@ -3,10 +3,7 @@ const socket = io();
 
 // DOM Elements
 const authModal = document.getElementById('authModal');
-const tabLoginBtn = document.getElementById('tabLoginBtn');
-const tabRegisterCompanyBtn = document.getElementById('tabRegisterCompanyBtn');
 const employeeLoginForm = document.getElementById('employeeLoginForm');
-const newCompanyForm = document.getElementById('newCompanyForm');
 const companySelect = document.getElementById('companySelect');
 
 const gameContainer = document.getElementById('gameContainer');
@@ -508,56 +505,18 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 
 // ----------------------------------------------------
-// GESTIÓN DE EMPRESAS Y EMPLEADOS (ESTILO ROBLOX BUILDER)
+// GESTIÓN DE EMPRESAS Y AUTENTICACIÓN DE FUNCIONARIOS
 // ----------------------------------------------------
-const employeeSelect = document.getElementById('employeeSelect');
-const newEmployeeFields = document.getElementById('newEmployeeFields');
 const playerEmail = document.getElementById('playerEmail');
-const playerDeptSelect = document.getElementById('playerDeptSelect');
-const customDeptInput = document.getElementById('customDeptInput');
-const addDeptBtn = document.getElementById('addDeptBtn');
-const deptTagsContainer = document.getElementById('deptTagsContainer');
+const playerPassword = document.getElementById('playerPassword');
+const loginModalTitle = document.getElementById('loginModalTitle');
+const loginModalSubtitle = document.getElementById('loginModalSubtitle');
+const companySelectGroup = document.getElementById('companySelectGroup');
 
-// Constructor de Tags de Dependencias en el Registro
-if (addDeptBtn && customDeptInput) {
-  addDeptBtn.addEventListener('click', () => {
-    const val = customDeptInput.value.trim();
-    if (val) {
-      addDeptTag(val);
-      customDeptInput.value = '';
-    }
-  });
+// Obtener slug de empresa desde la URL (?company=sysnet)
+const urlParamsGame = new URLSearchParams(window.location.search);
+const requestedCompanySlug = urlParamsGame.get('company');
 
-  customDeptInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addDeptBtn.click();
-    }
-  });
-}
-
-function addDeptTag(name) {
-  const span = document.createElement('span');
-  span.className = 'dept-tag';
-  span.dataset.name = name;
-  span.innerHTML = `${name} <button type="button" class="remove-tag">×</button>`;
-  span.querySelector('.remove-tag').addEventListener('click', () => span.remove());
-  deptTagsContainer.appendChild(span);
-}
-
-// Inicializar botones de eliminación en tags predeterminados
-if (deptTagsContainer) {
-  deptTagsContainer.querySelectorAll('.remove-tag').forEach(btn => {
-    btn.addEventListener('click', (e) => e.target.closest('.dept-tag').remove());
-  });
-}
-
-function getSelectedDepartments() {
-  const tags = deptTagsContainer.querySelectorAll('.dept-tag');
-  return Array.from(tags).map(t => t.dataset.name);
-}
-
-// Cargar lista de empresas y funcionarios
 let companiesCache = {};
 
 async function loadCompanies() {
@@ -571,144 +530,71 @@ async function loadCompanies() {
       companiesCache[c.id] = c;
       const opt = document.createElement('option');
       opt.value = c.id;
-      opt.textContent = `${c.name} (${c.departmentCount || 0} dep. • ${c.employeeCount || 0} func.)`;
+      opt.textContent = `${c.name} (${c.departmentCount || 0} dep.)`;
       companySelect.appendChild(opt);
     });
 
-    if (companies.length > 0) {
-      await loadCompanyDetails(companies[0].id);
+    if (requestedCompanySlug && companies.some(c => c.id === requestedCompanySlug)) {
+      companySelect.value = requestedCompanySlug;
+      const comp = companiesCache[requestedCompanySlug];
+      if (comp) {
+        if (loginModalTitle) loginModalTitle.textContent = `Sede Virtual: ${comp.name}`;
+        if (loginModalSubtitle) loginModalSubtitle.textContent = `Ingresa con tus credenciales de funcionario de ${comp.name}.`;
+      }
+    } else if (companies.length > 0) {
+      companySelect.value = companies[0].id;
     }
   } catch (err) {
     console.error('Error cargando empresas:', err);
   }
 }
 
-companySelect.addEventListener('change', () => loadCompanyDetails(companySelect.value));
-
-async function loadCompanyDetails(companyId) {
-  try {
-    const res = await fetch(`/api/companies/${companyId}`);
-    const company = await res.json();
-    if (!company) return;
-
-    // Actualizar lista de dependencias para el nuevo empleado
-    playerDeptSelect.innerHTML = '';
-    (company.departments || []).forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d.name;
-      opt.textContent = d.name;
-      playerDeptSelect.appendChild(opt);
-    });
-
-    // Actualizar lista de funcionarios registrados
-    employeeSelect.innerHTML = '<option value="new">+ Registrar Nuevo Funcionario</option>';
-    const employees = Object.values(company.employees || {});
-    employees.forEach(emp => {
-      const opt = document.createElement('option');
-      opt.value = emp.email || emp.name;
-      opt.textContent = `👤 ${emp.name} — ${emp.role} (${emp.department})`;
-      opt.dataset.json = JSON.stringify(emp);
-      employeeSelect.appendChild(opt);
-    });
-
-    // Controlar campos visibles
-    handleEmployeeSelectChange();
-  } catch (err) {
-    console.error('Error cargando detalle de empresa:', err);
-  }
-}
-
-employeeSelect.addEventListener('change', handleEmployeeSelectChange);
-
-function handleEmployeeSelectChange() {
-  const isNew = employeeSelect.value === 'new';
-  if (isNew) {
-    newEmployeeFields.style.display = 'block';
-    document.getElementById('playerName').value = '';
-    playerEmail.value = '';
-  } else {
-    newEmployeeFields.style.display = 'none';
-    const opt = employeeSelect.selectedOptions[0];
-    if (opt && opt.dataset.json) {
-      const emp = JSON.parse(opt.dataset.json);
-      document.getElementById('playerName').value = emp.name;
-      playerEmail.value = emp.email || '';
-      document.getElementById('playerRole').value = emp.role || 'Funcionario';
-      playerDeptSelect.value = emp.department || '';
-    }
-  }
-}
-
-// Tabs
-tabLoginBtn.addEventListener('click', () => {
-  tabLoginBtn.classList.add('active');
-  tabRegisterCompanyBtn.classList.remove('active');
-  employeeLoginForm.classList.remove('hidden');
-  newCompanyForm.classList.add('hidden');
-});
-
-tabRegisterCompanyBtn.addEventListener('click', () => {
-  tabRegisterCompanyBtn.classList.add('active');
-  tabLoginBtn.classList.remove('active');
-  newCompanyForm.classList.remove('hidden');
-  employeeLoginForm.classList.add('hidden');
-});
-
-// Registrar nueva Empresa B2B (Estilo Roblox)
-newCompanyForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('newCompanyName').value.trim();
-  const adminEmail = document.getElementById('adminEmail').value.trim();
-  const employeeCountExpected = document.getElementById('employeeCountExpected').value;
-  const departmentsList = getSelectedDepartments();
-
-  if (departmentsList.length === 0) {
-    alert('Por favor agrega al menos una dependencia para tu empresa.');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/companies', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, adminEmail, employeeCountExpected, departmentsList })
-    });
-    const data = await res.json();
-
-    if (data.success) {
-      alert(`¡Sede 3D de "${name}" construida con éxito con ${departmentsList.length} dependencias!`);
-      await loadCompanies();
-      companySelect.value = data.company.id;
-      await loadCompanyDetails(data.company.id);
-      tabLoginBtn.click();
-    } else {
-      alert(data.error || 'Error registrando empresa');
-    }
-  } catch (err) {
-    alert('Error conectando con el servidor');
+companySelect.addEventListener('change', () => {
+  const comp = companiesCache[companySelect.value];
+  if (comp) {
+    if (loginModalTitle) loginModalTitle.textContent = `Sede Virtual: ${comp.name}`;
+    if (loginModalSubtitle) loginModalSubtitle.textContent = `Ingresa con tus credenciales de funcionario de ${comp.name}.`;
   }
 });
 
-// Ingreso de Funcionario
-employeeLoginForm.addEventListener('submit', (e) => {
+// Ingreso / Login de Funcionario a la Empresa
+employeeLoginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const companyId = companySelect.value;
-  const isNew = employeeSelect.value === 'new';
-  const name = document.getElementById('playerName').value.trim();
-  const email = playerEmail.value.trim() || (isNew ? '' : employeeSelect.value);
-  const role = document.getElementById('playerRole').value.trim();
-  const department = playerDeptSelect.value;
+  const email = playerEmail.value.trim().toLowerCase();
+  const password = playerPassword.value.trim();
   const color = document.querySelector('input[name="avatarColor"]:checked').value;
 
-  if (!name) {
-    alert('Por favor ingresa tu nombre');
-    return;
+  try {
+    const res = await fetch(`/api/companies/${companyId}/employee-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+
+    const data = await res.json();
+    if (!data.success) {
+      alert(data.error || 'Credenciales de funcionario incorrectas.');
+      return;
+    }
+
+    const emp = data.employee;
+    const company = data.company;
+
+    // Guardar sesión en localStorage
+    localStorage.setItem('induction_session', JSON.stringify({
+      companyId: company.id,
+      name: emp.name,
+      email: emp.email,
+      role: emp.role || 'Funcionario',
+      department: emp.department || 'General',
+      color: color
+    }));
+
+    loginPlayer(company.id, emp.name, emp.email, emp.role || 'Funcionario', emp.department || 'General', color);
+  } catch (err) {
+    alert('Error al autenticar funcionario con el servidor.');
   }
-
-  // Guardar sesión en localStorage
-  localStorage.setItem('induction_session', JSON.stringify({ companyId, name, email, role, department, color }));
-
-  loginPlayer(companyId, name, email, role, department, color);
 });
 
 function loginPlayer(companyId, name, email, role, department, color) {
