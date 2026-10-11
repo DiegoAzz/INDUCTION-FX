@@ -126,10 +126,14 @@
       </div>
 
       <div class="header-actions">
+        <!-- Botón para abrir/cerrar panel en móviles -->
+        <button id="toggleSidebarBtn" class="btn-toggle-sidebar" title="Abrir Chat y Misiones">
+          💬 <span class="hide-mobile">Panel</span>
+        </button>
         <div class="online-pill">
           <span id="playerCount">1</span> en línea
         </div>
-        <button id="logoutBtn" class="btn-logout" title="Cambiar de empleado o empresa">Cerrar Sesión</button>
+        <button id="logoutBtn" class="btn-logout" title="Cambiar de empleado o empresa">Salir</button>
       </div>
     </header>
 
@@ -143,24 +147,36 @@
           Presiona <kbd>E</kbd> para hablar con <strong id="promptTargetName">el NPC</strong>
         </div>
 
+        <!-- Controles Táctiles Móviles (Joystick Virtual & Botón de Hablar) -->
+        <div id="mobileJoystickContainer" class="mobile-joystick-wrapper">
+          <div id="joystickBase" class="joystick-base">
+            <div id="joystickStick" class="joystick-stick"></div>
+          </div>
+        </div>
+
+        <!-- Botón Táctil de Interacción [E] para Móviles -->
+        <button id="mobileInteractBtn" class="mobile-action-btn hidden" type="button">
+          💬 Hablar
+        </button>
+
         <!-- Botón flotante Walkie-Talkie Push-to-Talk (estilo radio taxi) -->
         <div class="ptt-container">
           <button id="pttButton" class="btn-ptt" type="button">
             <span class="ptt-wave"></span>
             <span class="ptt-icon">📻</span>
-            <span class="ptt-label">MANTÉN PRESIONADO PARA HABLAR (ESPACIO)</span>
+            <span class="ptt-label">HABLAR POR RADIO</span>
           </button>
         </div>
 
         <!-- Indicador de transmisión activa -->
         <div id="transmittingIndicator" class="transmitting-indicator hidden">
           <span class="live-dot"></span>
-          <span>TRANSMITIENDO EN VIVO POR RADIO...</span>
+          <span>TRANSMITIENDO EN VIVO...</span>
         </div>
 
         <!-- Alerta de Sala de Juntas -->
         <div id="meetingAlert" class="meeting-alert hidden">
-          🔒 Estás en la <strong>Sala de Juntas Ejecutiva</strong> (Privado)
+          🔒 Estás en la <strong>Sala de Juntas</strong> (Privado)
         </div>
       </div>
 

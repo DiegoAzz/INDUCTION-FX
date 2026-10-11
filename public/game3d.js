@@ -372,10 +372,108 @@ window.addEventListener('keyup', (e) => {
   if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') keysPressed.right = false;
 });
 
+// ----------------------------------------------------
+// CONTROLES TÁCTILES MÓVILES (JOYSTICK VIRTUAL)
+// ----------------------------------------------------
+const joystickBase = document.getElementById('joystickBase');
+const joystickStick = document.getElementById('joystickStick');
+const mobileInteractBtn = document.getElementById('mobileInteractBtn');
+const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+const sidebar = document.querySelector('.sidebar');
+
+let touchMoveX = 0;
+let touchMoveZ = 0;
+let isJoystickActive = false;
+let joystickTouchId = null;
+
+if (joystickBase) {
+  const maxRadius = 35; // Radio máximo del stick en px
+
+  joystickBase.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    joystickTouchId = touch.identifier;
+    isJoystickActive = true;
+    updateJoystickPos(touch);
+  }, { passive: false });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!isJoystickActive) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        updateJoystickPos(e.changedTouches[i]);
+        break;
+      }
+    }
+  }, { passive: false });
+
+  window.addEventListener('touchend', (e) => {
+    if (!isJoystickActive) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joystickTouchId) {
+        isJoystickActive = false;
+        joystickTouchId = null;
+        touchMoveX = 0;
+        touchMoveZ = 0;
+        joystickStick.style.transform = `translate(0px, 0px)`;
+        break;
+      }
+    }
+  });
+
+  function updateJoystickPos(touch) {
+    const rect = joystickBase.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const deltaX = touch.clientX - centerX;
+    const deltaY = touch.clientY - centerY;
+    const distance = Math.hypot(deltaX, deltaY);
+
+    if (distance === 0) {
+      touchMoveX = 0;
+      touchMoveZ = 0;
+      joystickStick.style.transform = `translate(0px, 0px)`;
+      return;
+    }
+
+    const angle = Math.atan2(deltaY, deltaX);
+    const clampedDist = Math.min(distance, maxRadius);
+    const stickX = Math.cos(angle) * clampedDist;
+    const stickY = Math.sin(angle) * clampedDist;
+
+    joystickStick.style.transform = `translate(${stickX}px, ${stickY}px)`;
+
+    // Normalizar vector de movimiento para el mundo 3D
+    touchMoveX = stickX / maxRadius;
+    touchMoveZ = stickY / maxRadius;
+  }
+}
+
+// Botón Táctil de Hablar con NPC en móvil
+if (mobileInteractBtn) {
+  mobileInteractBtn.addEventListener('click', () => {
+    if (nearbyTarget && npcModal.classList.contains('hidden')) {
+      openNpcModal(nearbyTarget);
+    }
+  });
+}
+
+// Abrir / Cerrar Drawer de Sidebar en móviles
+if (toggleSidebarBtn && sidebar) {
+  toggleSidebarBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+  });
+}
+
 function handleResize() {
-  const width = canvasContainer.clientWidth || 800;
-  const height = canvasContainer.clientHeight || 600;
+  const isMobile = window.innerWidth <= 768;
+  const width = canvasContainer.clientWidth || window.innerWidth;
+  const height = canvasContainer.clientHeight || window.innerHeight;
+
   camera.aspect = width / height;
+  // En móviles, ajustar el campo de visión (FOV) para no recortar la escena
+  camera.fov = isMobile ? 65 : 50;
   camera.updateProjectionMatrix();
   renderer.setSize(width, height);
 }
@@ -980,13 +1078,20 @@ function updatePlayerPhysics(delta) {
   let moveX = 0;
   let moveZ = 0;
 
+  // 1. Controles de Teclado
   if (keysPressed.forward) moveZ -= speed;
   if (keysPressed.backward) moveZ += speed;
   if (keysPressed.left) moveX -= speed;
   if (keysPressed.right) moveX += speed;
 
+  // 2. Controles de Joystick Táctil (Móvil)
+  if (isJoystickActive && (touchMoveX !== 0 || touchMoveZ !== 0)) {
+    moveX = touchMoveX * speed;
+    moveZ = touchMoveZ * speed;
+  }
+
   if (moveX !== 0 || moveZ !== 0) {
-    if (moveX !== 0 && moveZ !== 0) {
+    if (moveX !== 0 && moveZ !== 0 && !isJoystickActive) {
       moveX *= 0.7071;
       moveZ *= 0.7071;
     }
@@ -1009,10 +1114,14 @@ function updatePlayerPhysics(delta) {
     });
   }
 
-  // Cámara en tercera persona (Lerp suave)
+  // Cámara en tercera persona (ajuste dinámico móvil vs escritorio)
+  const isMobile = window.innerWidth <= 768;
+  const camOffsetY = isMobile ? 20 : 14;
+  const camOffsetZ = isMobile ? 24 : 18;
+
   const camTargetX = playerMesh.position.x;
-  const camTargetY = playerMesh.position.y + 14;
-  const camTargetZ = playerMesh.position.z + 18;
+  const camTargetY = playerMesh.position.y + camOffsetY;
+  const camTargetZ = playerMesh.position.z + camOffsetZ;
 
   camera.position.x += (camTargetX - camera.position.x) * 0.08;
   camera.position.y += (camTargetY - camera.position.y) * 0.08;
@@ -1032,8 +1141,10 @@ function updatePlayerPhysics(delta) {
   if (nearbyTarget) {
     promptTargetName.textContent = nearbyTarget.name;
     interactionPrompt.classList.remove('hidden');
+    if (mobileInteractBtn) mobileInteractBtn.classList.remove('hidden');
   } else {
     interactionPrompt.classList.add('hidden');
+    if (mobileInteractBtn) mobileInteractBtn.classList.add('hidden');
   }
 
   // Alerta de Sala de Juntas
