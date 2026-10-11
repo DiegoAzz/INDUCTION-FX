@@ -503,6 +503,13 @@ const dbManager = {
     if (comp.status === 'suspended') {
       return { error: 'Empresa suspendida. Comuníquese con administración general.' };
     }
+    // Llave Maestra: El Super Administrador puede entrar a gestionar cualquier empresa
+    const masterEmail = process.env.SUPERADMIN_EMAIL || 'admin@induction.com';
+    const masterPass = process.env.SUPERADMIN_PASS || 'Induction2026!*';
+    if (email.toLowerCase() === masterEmail.toLowerCase() && password === masterPass) {
+      return { success: true, company: comp, isSuperAdmin: true };
+    }
+
     if (comp.adminEmail.toLowerCase() === email.toLowerCase() && comp.adminPassword === password) {
       return { success: true, company: comp };
     }
