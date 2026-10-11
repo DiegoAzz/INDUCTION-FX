@@ -611,6 +611,7 @@ io.on('connection', (socket) => {
       role: data.role,
       department: data.department || 'General',
       color: data.color || '#3B82F6',
+      avatarStyle: data.avatarStyle || 'developer',
       x: (Math.random() * 6 - 3),
       y: 0,
       z: (Math.random() * 6 - 3),

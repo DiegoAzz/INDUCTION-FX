@@ -69,7 +69,25 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-primary" style="margin-top: 10px;">Entrar a la Sede 3D 🚀</button>
+        <div class="form-group" style="margin-top: 14px;">
+          <label>Modelo de Personaje 3D</label>
+          <div class="avatar-style-picker" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px;">
+            <label class="style-card selected" id="styleCardDev" style="cursor: pointer; background: rgba(30, 41, 59, 0.8); border: 2px solid #3b82f6; border-radius: 10px; padding: 10px; text-align: center; transition: all 0.2s;">
+              <input type="radio" name="avatarStyle" value="developer" checked style="display: none;">
+              <div style="font-size: 24px;">🎧</div>
+              <strong style="font-size: 13px; display: block; margin-top: 4px; color: #fff;">Tech / Dev</strong>
+              <small style="color: #94a3b8; font-size: 11px;">Gorra, audífonos y laptop</small>
+            </label>
+            <label class="style-card" id="styleCardCowboy" style="cursor: pointer; background: rgba(30, 41, 59, 0.4); border: 2px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; text-align: center; transition: all 0.2s;">
+              <input type="radio" name="avatarStyle" value="cowboy" style="display: none;">
+              <div style="font-size: 24px;">🤠</div>
+              <strong style="font-size: 13px; display: block; margin-top: 4px; color: #fff;">Líder / Vaquero</strong>
+              <small style="color: #94a3b8; font-size: 11px;">Sombrero, chaleco y botas</small>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" style="margin-top: 12px;">Entrar a la Sede 3D 🚀</button>
 
         <div style="text-align: center; margin-top: 18px; font-size: 12px; color: var(--text-muted);">
           ¿Eres Administrador? <a href="/dashboard.html" style="color: #60a5fa; text-decoration: none; font-weight: 600;">Panel RRHH</a> • <a href="/superadmin.html" style="color: #c084fc; text-decoration: none; font-weight: 600;">Super Admin</a>

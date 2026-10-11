@@ -271,43 +271,15 @@ function buildNpcWorld(npcs) {
     screen.rotation.x = -0.15;
     stationGroup.add(screen);
 
-    // NPC Modelo
-    const npcGroup = new THREE.Group();
-    const body = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.65, 0.8, 1.8, 16),
-      new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 })
-    );
-    body.position.y = 1.3;
-    body.castShadow = true;
-    npcGroup.add(body);
-
-    // Cabeza estilizada 3D del NPC (Roblox Style)
-    const head = new THREE.Mesh(
-      new THREE.SphereGeometry(0.62, 16, 16),
-      new THREE.MeshStandardMaterial({ color: 0xffedd5, roughness: 0.5 })
-    );
-    head.position.y = 2.6;
-    head.castShadow = true;
-    npcGroup.add(head);
-
-    // Cabello / Peinado corporativo
-    const hair = new THREE.Mesh(
-      new THREE.SphereGeometry(0.64, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
-    );
-    hair.position.y = 2.65;
-    npcGroup.add(hair);
-
-    // Gafete corporativo en el pecho
-    const badge = new THREE.Mesh(
-      new THREE.BoxGeometry(0.45, 0.55, 0.08),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 })
-    );
-    badge.position.set(0, 1.4, 0.72);
-    npcGroup.add(badge);
-
-    npcGroup.position.set(0, 0, -1.8);
-    stationGroup.add(npcGroup);
+    // NPC Modelo Humanoide Estilizado
+    const isHr = (npc.department && npc.department.toLowerCase().includes('rrhh'));
+    const npcAvatar = createAvatarMesh(color, false, {
+      name: npc.name,
+      role: npc.role,
+      style: isHr ? 'developer' : 'cowboy'
+    });
+    npcAvatar.position.set(0, 0, -1.8);
+    stationGroup.add(npcAvatar);
 
     stationGroup.position.set(x, 0, z);
     scene.add(stationGroup);
@@ -315,62 +287,530 @@ function buildNpcWorld(npcs) {
     npcMeshes.push({
       npcData: { ...npc, x, z, color },
       mesh: stationGroup,
-      npcModel: npcGroup
+      npcModel: npcAvatar
     });
   });
 }
 
 // ----------------------------------------------------
-// AVATARES DE JUGADORES 3D
+// AVATARES DE JUGADORES 3D - PERSONAJES HUMANOIDES HD
 // ----------------------------------------------------
 const playerMeshes = {};
+const faceTextureCache = {};
 
-function createAvatarMesh(colorHex, isSelf = false) {
+function getFaceTexture(type = 'dev') {
+  if (faceTextureCache[type]) return faceTextureCache[type];
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 512);
+
+  if (type === 'dev') {
+    // Ojos grandes expresivos estilo Pixar / Chibi (Foto 1)
+    function drawEye(cx, cy, isLeft) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 54, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Esclerótica blanca
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 48, 56, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Iris castaño
+      ctx.fillStyle = '#3e2723';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 4 : -4), cy + 2, 34, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupila
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 4 : -4), cy + 2, 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Reflejo principal
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 14 : 6), cy - 10, 11, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Reflejo secundario
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? -4 : -12), cy + 12, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pestaña superior delineada
+      ctx.strokeStyle = '#1e293b';
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 48, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+
+      // Ceja
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cx - 42, cy - 82, 84, 16, 8);
+      else ctx.rect(cx - 42, cy - 82, 84, 16);
+      ctx.fill();
+    }
+
+    drawEye(170, 220, true);
+    drawEye(342, 220, false);
+
+    // Sonrisa amable
+    ctx.strokeStyle = '#b91c1c';
+    ctx.lineWidth = 6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(256, 305, 38, 0.2 * Math.PI, 0.8 * Math.PI);
+    ctx.stroke();
+
+    // Rubor suave
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.18)';
+    ctx.beginPath();
+    ctx.arc(130, 290, 32, 0, Math.PI * 2);
+    ctx.arc(382, 290, 32, 0, Math.PI * 2);
+    ctx.fill();
+
+  } else {
+    // Ojos decididos y barba estilizada (Foto 2)
+    function drawCowboyEye(cx, cy, isLeft) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 42, 48, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#1e1b4b';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 28, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx + 8, cy - 8, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 6, 42, Math.PI * 1.2, Math.PI * 1.8);
+      ctx.stroke();
+
+      ctx.fillStyle = '#1c1917';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cx - 38, cy - 72, 76, 18, 9);
+      else ctx.rect(cx - 38, cy - 72, 76, 18);
+      ctx.fill();
+    }
+
+    drawCowboyEye(175, 205, true);
+    drawCowboyEye(337, 205, false);
+
+    // Bigote
+    ctx.fillStyle = '#1c1917';
+    ctx.beginPath();
+    ctx.ellipse(256, 285, 80, 26, 0, 0, Math.PI);
+    ctx.fill();
+
+    // Barba envolvente
+    ctx.beginPath();
+    ctx.arc(256, 320, 140, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  faceTextureCache[type] = tex;
+  return tex;
+}
+
+function createNameplateTexture(name, role) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 0, 512, 0);
+  grad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+  grad.addColorStop(1, 'rgba(30, 41, 59, 0.90)');
+  ctx.fillStyle = grad;
+  if (ctx.roundRect) ctx.roundRect(12, 12, 488, 104, 52);
+  else ctx.rect(12, 12, 488, 104);
+  ctx.fill();
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3.5;
+  ctx.stroke();
+
+  ctx.fillStyle = '#10b981';
+  ctx.shadowColor = '#10b981';
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(62, 64, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 34px sans-serif';
+  ctx.fillText((name || 'FUNCIONARIO').toUpperCase(), 94, 56);
+
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = '600 22px sans-serif';
+  ctx.fillText((role || 'CORPORATIVO').toUpperCase(), 94, 88);
+
+  return new THREE.CanvasTexture(canvas);
+}
+
+function createAvatarMesh(colorHex, isSelf = false, options = {}) {
   const safeColor = (colorHex && typeof colorHex === 'string') ? colorHex : '#3b82f6';
-  const group = new THREE.Group();
+  const name = options.name || 'Funcionario';
+  const role = options.role || 'Oficina 3D';
+  let style = options.style;
+  if (!style) {
+    const roleLower = role.toLowerCase();
+    if (roleLower.includes('director') || roleLower.includes('gerente') || roleLower.includes('operacion') || roleLower.includes('lider')) {
+      style = 'cowboy';
+    } else {
+      style = 'developer';
+    }
+  }
 
+  const root = new THREE.Group();
+  const char = new THREE.Group();
+  root.add(char);
+
+  // 1. Sombra de contacto suave
   const shadow = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.6, 1.6),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })
+    new THREE.CircleGeometry(0.8, 32),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.45 })
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.02;
-  group.add(shadow);
+  root.add(shadow);
 
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.65, 0.8, 1.7, 16),
-    new THREE.MeshStandardMaterial({ color: safeColor, roughness: 0.3 })
-  );
-  body.position.y = 1.3;
-  body.castShadow = true;
-  group.add(body);
-
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.58, 16, 16),
-    new THREE.MeshStandardMaterial({ color: 0xffe4e6 })
-  );
-  head.position.y = 2.5;
-  head.castShadow = true;
-  group.add(head);
-
-  const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.6, 0.2, 0.4),
-    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 })
-  );
-  visor.position.set(0, 2.55, 0.42);
-  group.add(visor);
-
+  // Halo iluminado para el jugador actual
   if (isSelf) {
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(1.1, 1.35, 32),
+    const halo = new THREE.Mesh(
+      new THREE.RingGeometry(0.88, 1.02, 32),
       new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
     );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.03;
-    group.add(ring);
+    halo.rotation.x = -Math.PI / 2;
+    halo.position.y = 0.03;
+    root.add(halo);
   }
 
-  return group;
+  // Materiales
+  const skinMat = new THREE.MeshStandardMaterial({ color: 0xdfa384, roughness: 0.65 });
+  const jeansMat = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.8 });
+  const jacketMat = new THREE.MeshStandardMaterial({ color: safeColor, roughness: 0.45 });
+  const tshirtMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+  const soleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+  const sneakerMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 });
+  const darkMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.35 });
+  const silverMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.85, roughness: 0.2 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.25 });
+
+  // 2. PIERNAS Y SNEAKERS
+  const legL = new THREE.Group();
+  legL.position.set(-0.25, 1.10, 0);
+  char.add(legL);
+
+  const legR = new THREE.Group();
+  legR.position.set(0.25, 1.10, 0);
+  char.add(legR);
+
+  function buildLeg(parent) {
+    const pant = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.17, 0.90, 16), jeansMat);
+    pant.position.y = -0.45;
+    pant.castShadow = true;
+    parent.add(pant);
+
+    const shoe = new THREE.Group();
+    shoe.position.set(0, -0.90, 0.06);
+
+    const sole = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.12, 0.58), soleMat);
+    sole.position.y = -0.05;
+    sole.castShadow = true;
+    shoe.add(sole);
+
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.18, 0.48), sneakerMat);
+    upper.position.set(0, 0.07, 0.02);
+    upper.castShadow = true;
+    shoe.add(upper);
+
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.26, 14), soleMat);
+    cap.rotation.z = Math.PI / 2;
+    cap.position.set(0, 0.03, 0.24);
+    shoe.add(cap);
+
+    parent.add(shoe);
+  }
+
+  buildLeg(legL);
+  buildLeg(legR);
+
+  // 3. CADERA Y CINTURÓN
+  const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.38, 0.24, 18), jeansMat);
+  pelvis.position.y = 1.22;
+  pelvis.castShadow = true;
+  char.add(pelvis);
+
+  const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.08, 18), darkMat);
+  belt.position.y = 1.32;
+  char.add(belt);
+
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.11, 0.06), goldMat);
+  buckle.position.set(0, 1.32, 0.40);
+  char.add(buckle);
+
+  // 4. TORSO (Chaqueta urbana / Chaleco)
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.40, 0.88, 18), jacketMat);
+  torso.position.y = 1.76;
+  torso.castShadow = true;
+  char.add(torso);
+
+  const tshirt = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.76, 0.14), tshirtMat);
+  tshirt.position.set(0, 1.82, 0.37);
+  char.add(tshirt);
+
+  const flapL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.76, 0.06), darkMat);
+  flapL.position.set(-0.16, 1.82, 0.42);
+  char.add(flapL);
+
+  const flapR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.76, 0.06), darkMat);
+  flapR.position.set(0.16, 1.82, 0.42);
+  char.add(flapR);
+
+  // Gafete corporativo
+  const badge = new THREE.Group();
+  badge.position.set(0, 1.68, 0.45);
+  const lanyard = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.35, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+  lanyard.position.y = 0.16;
+  badge.add(lanyard);
+  const badgeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.02), soleMat);
+  badgeMesh.castShadow = true;
+  badge.add(badgeMesh);
+  const badgePhoto = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.025), new THREE.MeshBasicMaterial({ color: safeColor }));
+  badgePhoto.position.set(0, 0.04, 0.005);
+  badge.add(badgePhoto);
+  char.add(badge);
+
+  // 5. BRAZOS Y MANOS
+  const armL = new THREE.Group();
+  armL.position.set(-0.55, 2.10, 0);
+  char.add(armL);
+
+  const armR = new THREE.Group();
+  armR.position.set(0.55, 2.10, 0);
+  char.add(armR);
+
+  // Brazo izquierdo con smartwatch
+  const sleeveL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.74, 14), jacketMat);
+  sleeveL.position.y = -0.37;
+  sleeveL.castShadow = true;
+  armL.add(sleeveL);
+
+  const handL = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 14), skinMat);
+  handL.position.y = -0.78;
+  handL.castShadow = true;
+  armL.add(handL);
+
+  const watch = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.07, 14), darkMat);
+  watch.position.y = -0.70;
+  armL.add(watch);
+
+  // Brazo derecho sosteniendo laptop
+  const sleeveR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.74, 14), jacketMat);
+  sleeveR.position.y = -0.37;
+  sleeveR.castShadow = true;
+  armR.add(sleeveR);
+
+  const handR = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 14), skinMat);
+  handR.position.y = -0.78;
+  handR.castShadow = true;
+  armR.add(handR);
+
+  // Laptop moderna en mano (Foto 1)
+  const laptop = new THREE.Group();
+  laptop.position.set(0.18, -0.76, 0.18);
+  laptop.rotation.x = 0.2;
+  laptop.rotation.y = -0.35;
+
+  const lapBase = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.03, 0.34), silverMat);
+  lapBase.castShadow = true;
+  laptop.add(lapBase);
+
+  const lapScreen = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.32, 0.02), darkMat);
+  lapScreen.position.set(0, 0.16, -0.16);
+  lapScreen.rotation.x = -0.28;
+  laptop.add(lapScreen);
+
+  const lapGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.40, 0.28), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+  lapGlow.position.set(0, 0.16, -0.148);
+  lapGlow.rotation.x = -0.28;
+  laptop.add(lapGlow);
+
+  armR.add(laptop);
+
+  // 6. CUELLO Y CABEZA
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.22, 14), skinMat);
+  neck.position.y = 2.26;
+  char.add(neck);
+
+  const headGroup = new THREE.Group();
+  headGroup.position.set(0, 2.65, 0);
+  char.add(headGroup);
+
+  const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.48, 24, 24), skinMat);
+  headMesh.scale.set(1.0, 1.06, 0.98);
+  headMesh.castShadow = true;
+  headGroup.add(headMesh);
+
+  const earL = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), skinMat);
+  earL.position.set(-0.48, 0, 0);
+  earL.scale.set(0.4, 1, 0.7);
+  headGroup.add(earL);
+
+  const earR = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), skinMat);
+  earR.position.set(0.48, 0, 0);
+  earR.scale.set(0.4, 1, 0.7);
+  headGroup.add(earR);
+
+  // Capa de Rostro Expressive 2D Canvas curvado al frente
+  const faceTex = getFaceTexture(style === 'cowboy' ? 'cowboy' : 'dev');
+  const facePlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.72, 0.72),
+    new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+  );
+  facePlane.position.set(0, -0.01, 0.475);
+  headGroup.add(facePlane);
+
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), skinMat);
+  nose.position.set(0, -0.04, 0.48);
+  headGroup.add(nose);
+
+  if (style === 'developer') {
+    // Gorra de béisbol
+    const cap = new THREE.Group();
+    cap.position.set(0, 0.16, 0);
+
+    const capDome = new THREE.Mesh(
+      new THREE.SphereGeometry(0.50, 22, 16, 0, Math.PI * 2, 0, Math.PI / 1.7),
+      darkMat
+    );
+    capDome.position.y = 0.08;
+    capDome.castShadow = true;
+    cap.add(capDome);
+
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.04, 0.40), darkMat);
+    visor.position.set(0, 0.07, 0.50);
+    visor.rotation.x = -0.16;
+    visor.castShadow = true;
+    cap.add(visor);
+
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), silverMat);
+    btn.position.y = 0.58;
+    cap.add(btn);
+
+    // Mechones de cabello castaño
+    const hairL = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), darkMat);
+    hairL.position.set(-0.40, -0.12, 0.25);
+    cap.add(hairL);
+
+    const hairR = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), darkMat);
+    hairR.position.set(0.40, -0.12, 0.25);
+    cap.add(hairR);
+
+    headGroup.add(cap);
+
+    // Audífonos Over-Ear con neón
+    const headphones = new THREE.Group();
+    headphones.position.set(0, 0.06, 0);
+
+    const cupL = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.15, 18), darkMat);
+    cupL.rotation.z = Math.PI / 2;
+    cupL.position.set(-0.52, 0, 0);
+    cupL.castShadow = true;
+    headphones.add(cupL);
+
+    const glowRingL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 18), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+    glowRingL.rotation.z = Math.PI / 2;
+    glowRingL.position.set(-0.60, 0, 0);
+    headphones.add(glowRingL);
+
+    const cupR = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.15, 18), darkMat);
+    cupR.rotation.z = Math.PI / 2;
+    cupR.position.set(0.52, 0, 0);
+    cupR.castShadow = true;
+    headphones.add(cupR);
+
+    const glowRingR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 18), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+    glowRingR.rotation.z = Math.PI / 2;
+    glowRingR.position.set(0.60, 0, 0);
+    headphones.add(glowRingR);
+
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.045, 10, 24, Math.PI), silverMat);
+    band.position.set(0, 0.06, 0);
+    band.rotation.y = Math.PI / 2;
+    headphones.add(band);
+
+    headGroup.add(headphones);
+
+  } else if (style === 'cowboy') {
+    // Sombrero vaquero de cuero (Foto 2)
+    const hat = new THREE.Group();
+    hat.position.set(0, 0.32, 0);
+
+    const leatherMat = new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.55 });
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.4 });
+
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.88, 0.05, 28), leatherMat);
+    brim.scale.set(1.15, 1.0, 1.30);
+    hat.add(brim);
+
+    const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.50, 20), leatherMat);
+    crown.position.y = 0.26;
+    hat.add(crown);
+
+    const hBand = new THREE.Mesh(new THREE.CylinderGeometry(0.485, 0.485, 0.09, 20), bandMat);
+    hBand.position.y = 0.09;
+    hat.add(hBand);
+
+    headGroup.add(hat);
+
+    const bandana = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.30, 8), new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.6 }));
+    bandana.position.set(0, 2.18, 0.35);
+    bandana.rotation.x = 0.4;
+    char.add(bandana);
+  }
+
+  // Cartel Flotante con Nombre y Cargo
+  const nameTex = createNameplateTexture(name, role);
+  const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex, transparent: true }));
+  nameSprite.position.set(0, 3.65, 0);
+  nameSprite.scale.set(2.8, 0.7, 1);
+  root.add(nameSprite);
+
+  root.userData = {
+    leftLeg: legL,
+    rightLeg: legR,
+    armL: armL,
+    armR: armR,
+    char: char,
+    head: headGroup,
+    walkTime: 0
+  };
+
+  return root;
 }
 
 // ----------------------------------------------------
@@ -576,7 +1016,8 @@ employeeLoginForm.addEventListener('submit', async (e) => {
   const companyId = companySelect.value;
   const email = playerEmail.value.trim().toLowerCase();
   const password = playerPassword.value.trim();
-  const color = document.querySelector('input[name="avatarColor"]:checked').value;
+  const color = document.querySelector('input[name="avatarColor"]:checked')?.value || '#3b82f6';
+  const avatarStyle = document.querySelector('input[name="avatarStyle"]:checked')?.value || 'developer';
 
   try {
     const res = await fetch(`/api/companies/${companyId}/employee-login`, {
@@ -605,14 +1046,29 @@ employeeLoginForm.addEventListener('submit', async (e) => {
       email: emp.email,
       role: emp.role || 'Funcionario',
       department: emp.department || 'General',
-      color: color
+      color: color,
+      avatarStyle: avatarStyle
     }));
 
-    loginPlayer(company.id, emp.name, emp.email, emp.role || 'Funcionario', emp.department || 'General', color);
+    loginPlayer(company.id, emp.name, emp.email, emp.role || 'Funcionario', emp.department || 'General', color, avatarStyle);
     loadEmployeeHRRequests();
   } catch (err) {
     alert('Error al autenticar funcionario con el servidor.');
   }
+});
+
+// Selección visual de tarjetas de estilo de avatar
+document.querySelectorAll('.avatar-style-picker .style-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.avatar-style-picker .style-card').forEach(c => {
+      c.style.border = '2px solid rgba(255,255,255,0.1)';
+      c.style.background = 'rgba(30, 41, 59, 0.4)';
+    });
+    card.style.border = '2px solid #3b82f6';
+    card.style.background = 'rgba(30, 41, 59, 0.8)';
+    const input = card.querySelector('input');
+    if (input) input.checked = true;
+  });
 });
 
 function showTerminationNotice(reason, date) {
@@ -628,8 +1084,8 @@ if (closeTermNoticeBtn) {
   });
 }
 
-function loginPlayer(companyId, name, email, role, department, color) {
-  socket.emit('player:join', { companyId, name, email, role, department, color });
+function loginPlayer(companyId, name, email, role, department, color, avatarStyle = 'developer') {
+  socket.emit('player:join', { companyId, name, email, role, department, color, avatarStyle });
   authModal.classList.add('hidden');
   gameContainer.classList.remove('hidden');
   displayEmployeeName.textContent = `${name} • ${role} (${department || 'General'})`;
@@ -652,7 +1108,7 @@ async function initApp() {
     try {
       const data = JSON.parse(saved);
       if (data.companyId && data.name) {
-        loginPlayer(data.companyId, data.name, data.email || '', data.role || 'Funcionario', data.department || 'General', data.color || '#3b82f6');
+        loginPlayer(data.companyId, data.name, data.email || '', data.role || 'Funcionario', data.department || 'General', data.color || '#3b82f6', data.avatarStyle || 'developer');
       }
     } catch (e) {
       console.warn('Error restaurando sesión');
@@ -692,7 +1148,12 @@ socket.on('office:init', (data) => {
   for (const id in players) {
     const p = players[id];
     const isMe = id === selfId;
-    const mesh = createAvatarMesh(p.color || '#3b82f6', isMe);
+    const mesh = createAvatarMesh(p.color || '#3b82f6', isMe, {
+      name: p.name,
+      role: p.role,
+      department: p.department,
+      style: p.avatarStyle
+    });
     mesh.position.set(p.x || 0, 0, p.z || 0);
     scene.add(mesh);
     playerMeshes[id] = mesh;
@@ -714,7 +1175,12 @@ socket.on('player:joined', (player) => {
   players[player.id] = player;
   updatePlayerCount();
 
-  const mesh = createAvatarMesh(player.color || '#3b82f6', false);
+  const mesh = createAvatarMesh(player.color || '#3b82f6', false, {
+    name: player.name,
+    role: player.role,
+    department: player.department,
+    style: player.avatarStyle
+  });
   mesh.position.set(player.x || 0, 0, player.z || 0);
   scene.add(mesh);
   playerMeshes[player.id] = mesh;
@@ -737,8 +1203,20 @@ socket.on('player:moved', (data) => {
 
     const mesh = playerMeshes[data.id];
     if (mesh) {
+      const movedDist = Math.hypot(data.x - mesh.position.x, data.z - mesh.position.z);
       mesh.position.set(data.x, 0, data.z);
       if (data.rotationY !== undefined) mesh.rotation.y = data.rotationY;
+
+      // Animación de caminata remota
+      if (movedDist > 0.02 && mesh.userData) {
+        mesh.userData.walkTime += 0.35;
+        const cycle = mesh.userData.walkTime;
+        if (mesh.userData.leftLeg) mesh.userData.leftLeg.rotation.x = Math.sin(cycle) * 0.7;
+        if (mesh.userData.rightLeg) mesh.userData.rightLeg.rotation.x = -Math.sin(cycle) * 0.7;
+        if (mesh.userData.armL) mesh.userData.armL.rotation.x = -Math.sin(cycle) * 0.6;
+        if (mesh.userData.armR) mesh.userData.armR.rotation.x = Math.sin(cycle) * 0.6;
+        if (mesh.userData.char) mesh.userData.char.position.y = Math.abs(Math.sin(cycle)) * 0.08;
+      }
     }
     updateSpatialAudioVolumes();
   }
@@ -1465,8 +1943,13 @@ function animate() {
 
   // Animación idle suave de los NPCs
   npcMeshes.forEach(item => {
-    if (item && item.npcModel) {
-      item.npcModel.rotation.y = Math.sin(now * 0.002) * 0.12;
+    if (item && item.npcModel && item.npcModel.userData) {
+      if (item.npcModel.userData.char) {
+        item.npcModel.userData.char.position.y = Math.sin(now * 0.003) * 0.02;
+      }
+      if (item.npcModel.userData.head) {
+        item.npcModel.userData.head.rotation.y = Math.sin(now * 0.0015) * 0.18;
+      }
     }
   });
 
@@ -1497,7 +1980,31 @@ function updatePlayerPhysics(delta) {
     moveZ = touchMoveZ * speed;
   }
 
-  if (moveX !== 0 || moveZ !== 0) {
+  const isMoving = (moveX !== 0 || moveZ !== 0);
+
+  // Animación de caminata / reposo
+  if (playerMesh.userData) {
+    if (isMoving) {
+      playerMesh.userData.walkTime += delta * 14;
+      const cycle = playerMesh.userData.walkTime;
+      if (playerMesh.userData.leftLeg) playerMesh.userData.leftLeg.rotation.x = Math.sin(cycle) * 0.7;
+      if (playerMesh.userData.rightLeg) playerMesh.userData.rightLeg.rotation.x = -Math.sin(cycle) * 0.7;
+      if (playerMesh.userData.armL) playerMesh.userData.armL.rotation.x = -Math.sin(cycle) * 0.6;
+      if (playerMesh.userData.armR) playerMesh.userData.armR.rotation.x = Math.sin(cycle) * 0.6;
+      if (playerMesh.userData.char) playerMesh.userData.char.position.y = Math.abs(Math.sin(cycle)) * 0.08;
+    } else {
+      if (playerMesh.userData.leftLeg) playerMesh.userData.leftLeg.rotation.x *= 0.8;
+      if (playerMesh.userData.rightLeg) playerMesh.userData.rightLeg.rotation.x *= 0.8;
+      if (playerMesh.userData.armL) playerMesh.userData.armL.rotation.x *= 0.8;
+      if (playerMesh.userData.armR) playerMesh.userData.armR.rotation.x *= 0.8;
+      if (playerMesh.userData.char) {
+        const now = performance.now();
+        playerMesh.userData.char.position.y = Math.sin(now * 0.003) * 0.02;
+      }
+    }
+  }
+
+  if (isMoving) {
     if (moveX !== 0 && moveZ !== 0 && !isJoystickActive) {
       moveX *= 0.7071;
       moveZ *= 0.7071;
