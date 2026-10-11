@@ -12,6 +12,9 @@ RUN npm install --omit=dev
 # Copiar el código de la aplicación
 COPY . .
 
+# Generar cliente de Prisma para PostgreSQL
+RUN npx prisma generate || true
+
 # Puerto expuesto por defecto
 EXPOSE 3000
 
@@ -19,5 +22,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# Comando para iniciar la aplicación
-CMD ["node", "server.js"]
+# Comando para iniciar la aplicación (ejecuta migración de BD si DATABASE_URL está activa)
+CMD ["sh", "-c", "npx prisma db push --skip-generate || true; node server.js"]

@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Empresa / Organización (Multi-Tenant)
+model Company {
+  id                     String       @id @default(uuid())
+  slug                   String       @unique
+  name                   String
+  adminEmail             String
+  employeeCountExpected  Int          @default(25)
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  departments            Department[]
+  employees              Employee[]
+
+  @@map("companies")
+}
+
+// 2. Dependencias / Oficinas 3D (Estilo Roblox)
+model Department {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  description String?  @db.Text
+  leaderName  String?
+  leaderRole  String?
+  avatarUrl   String?
+  color       String   @default("#3B82F6")
+  posX        Float    @default(0)
+  posZ        Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees   Employee[]
+  progressRecords OnboardingProgress[]
+
+  @@map("departments")
+}
+
+// 3. Funcionarios / Empleados Registrados
+model Employee {
+  id           String       @id @default(uuid())
+  companyId    String
+  departmentId String?
+  name         String
+  email        String
+  role         String       @default("Funcionario")
+  color        String       @default("#3B82F6")
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  progress     OnboardingProgress[]
+
+  @@unique([companyId, email])
+  @@map("employees")
+}
+
+// 4. Progreso y Misiones de Inducción
+model OnboardingProgress {
+  id           String     @id @default(uuid())
+  employeeId   String
+  departmentId String
+  completedAt  DateTime   @default(now())
+
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, departmentId])
+  @@map("onboarding_progress")
+}

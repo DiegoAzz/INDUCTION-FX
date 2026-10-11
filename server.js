@@ -116,27 +116,24 @@ function saveDatabase(data) {
   }
 }
 
-let db = loadDatabase();
+const dbManager = require('./db');
 
 // ----------------------------------------------------------------
 // APIS REST
 // ----------------------------------------------------------------
 
 // Listar empresas
-app.get('/api/companies', (req, res) => {
-  const list = Object.values(db.companies).map(c => ({
-    id: c.id,
-    name: c.name,
-    adminEmail: c.adminEmail,
-    departmentCount: (c.departments || []).length,
-    employeeCount: Object.keys(c.employees || {}).length,
-    employeeCountExpected: c.employeeCountExpected || 10
-  }));
-  res.json(list);
+app.get('/api/companies', async (req, res) => {
+  try {
+    const list = await dbManager.getCompanies();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al consultar empresas' });
+  }
 });
 
 // Registrar nueva empresa con sus dependencias y funcionarios (Estilo Roblox)
-app.post('/api/companies', (req, res) => {
+app.post('/api/companies', async (req, res) => {
   const { name, adminEmail, employeeCountExpected, departmentsList } = req.body;
   if (!name || !adminEmail) {
     return res.status(400).json({ error: 'Nombre de empresa y correo requeridos' });
@@ -144,11 +141,6 @@ app.post('/api/companies', (req, res) => {
 
   const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 30) || 'empresa-' + Date.now();
 
-  if (db.companies[slug]) {
-    return res.status(400).json({ error: 'Ya existe una empresa registrada con ese nombre' });
-  }
-
-  // Procesar dependencias enviadas o usar predeterminadas
   let departments = [];
   if (Array.isArray(departmentsList) && departmentsList.length > 0) {
     departments = departmentsList.filter(d => d.trim().length > 0).map(d => ({
@@ -166,54 +158,54 @@ app.post('/api/companies', (req, res) => {
 
   const generatedNpcs = generateDepartmentLayout(departments);
 
-  db.companies[slug] = {
-    id: slug,
-    name: name.trim(),
-    adminEmail: adminEmail.trim(),
-    employeeCountExpected: parseInt(employeeCountExpected, 10) || 10,
-    departments: departments,
-    npcs: generatedNpcs,
-    employees: {}
-  };
+  try {
+    const company = await dbManager.createCompany({
+      slug,
+      name: name.trim(),
+      adminEmail: adminEmail.trim(),
+      employeeCountExpected: parseInt(employeeCountExpected, 10) || 10,
+      departments: departments
+    }, generatedNpcs);
 
-  saveDatabase(db);
-  console.log(`[Induction] Empresa creada con ${departments.length} dependencias 3D: ${name}`);
-  res.status(201).json({ success: true, company: db.companies[slug] });
+    console.log(`[Induction] Empresa guardada en base de datos: ${name} (${slug})`);
+    res.status(201).json({ success: true, company });
+  } catch (err) {
+    res.status(500).json({ error: 'Error creando empresa en base de datos' });
+  }
 });
 
 // Obtener datos y funcionarios de una empresa
-app.get('/api/companies/:companyId', (req, res) => {
-  const company = db.companies[req.params.companyId];
-  if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
-  res.json(company);
+app.get('/api/companies/:companyId', async (req, res) => {
+  try {
+    const company = await dbManager.getCompanyBySlug(req.params.companyId);
+    if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
+    res.json(company);
+  } catch (err) {
+    res.status(500).json({ error: 'Error obteniendo empresa' });
+  }
 });
 
 // Registrar un nuevo funcionario en la base de datos de una empresa
-app.post('/api/companies/:companyId/employees', (req, res) => {
+app.post('/api/companies/:companyId/employees', async (req, res) => {
   const { companyId } = req.params;
   const { name, email, role, department, color } = req.body;
 
-  const company = db.companies[companyId];
-  if (!company) return res.status(404).json({ error: 'Empresa no encontrada' });
-
   if (!name || !email) {
-    return res.status(400).json({ error: 'Nombre y correo corporativo requeridos' });
+    return res.status(400).json({ error: 'Nombre y correo requeridos' });
   }
 
-  const key = email.toLowerCase().trim();
-  company.employees[key] = {
-    id: 'emp-' + Date.now(),
-    name: name.trim(),
-    email: key,
-    role: role || 'Funcionario',
-    department: department || (company.departments[0] ? company.departments[0].name : 'General'),
-    color: color || '#3B82F6',
-    visitedNPCs: [],
-    createdAt: new Date().toISOString()
-  };
-
-  saveDatabase(db);
-  res.status(201).json({ success: true, employee: company.employees[key] });
+  try {
+    const employee = await dbManager.createEmployee(companyId, {
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      role: role || 'Funcionario',
+      department: department || 'General',
+      color: color || '#3B82F6'
+    });
+    res.status(201).json({ success: true, employee });
+  } catch (err) {
+    res.status(500).json({ error: 'Error registrando funcionario en base de datos' });
+  }
 });
 
 // Agregar una nueva dependencia a la oficina 3D en caliente
@@ -245,37 +237,30 @@ const activePlayers = {};
 
 io.on('connection', (socket) => {
   // Login / Ingreso de funcionario a la oficina 3D
-  socket.on('player:join', (data) => {
+  socket.on('player:join', async (data) => {
     const companyId = data.companyId || 'demo-corp';
-    const company = db.companies[companyId] || db.companies['demo-corp'];
+    const company = await dbManager.getCompanyBySlug(companyId);
+    if (!company) return;
+
     socket.join(companyId);
 
-    // Obtener o registrar funcionario en la base de datos
-    const empKey = (data.email || data.name || 'invitado').toLowerCase().trim();
-    if (!company.employees[empKey]) {
-      company.employees[empKey] = {
-        id: 'emp-' + Date.now(),
-        name: data.name,
-        email: data.email || `${data.name.replace(/\s+/g, '.').toLowerCase()}@${company.id}.com`,
-        role: data.role || 'Nuevo Ingreso',
-        department: data.department || 'General',
-        color: data.color || '#3B82F6',
-        visitedNPCs: [],
-        createdAt: new Date().toISOString()
-      };
-      saveDatabase(db);
-    }
-
-    const empData = company.employees[empKey];
+    const email = data.email || `${(data.name || 'user').replace(/\s+/g, '.').toLowerCase()}@${company.id}.com`;
+    const employee = await dbManager.createEmployee(companyId, {
+      name: data.name,
+      email: email,
+      role: data.role || 'Nuevo Ingreso',
+      department: data.department || 'General',
+      color: data.color || '#3B82F6'
+    });
 
     activePlayers[socket.id] = {
       id: socket.id,
       companyId: companyId,
-      name: empData.name,
-      email: empData.email,
-      role: empData.role,
-      department: empData.department,
-      color: data.color || empData.color || '#3B82F6',
+      name: data.name,
+      email: email,
+      role: data.role,
+      department: data.department || 'General',
+      color: data.color || '#3B82F6',
       x: (Math.random() * 6 - 3),
       y: 0,
       z: (Math.random() * 6 - 3),
@@ -301,7 +286,7 @@ io.on('connection', (socket) => {
       },
       npcs: company.npcs,
       players: companyPlayers,
-      savedProgress: empData.visitedNPCs || []
+      savedProgress: []
     });
 
     socket.to(companyId).emit('player:joined', activePlayers[socket.id]);
@@ -329,15 +314,10 @@ io.on('connection', (socket) => {
   });
 
   // Guardar misión completada en la BD
-  socket.on('player:complete_task', (npcId) => {
+  socket.on('player:complete_task', async (npcId) => {
     const player = activePlayers[socket.id];
-    if (player && db.companies[player.companyId]) {
-      const empKey = (player.email || player.name || '').toLowerCase().trim();
-      const emp = db.companies[player.companyId].employees[empKey];
-      if (emp && !emp.visitedNPCs.includes(npcId)) {
-        emp.visitedNPCs.push(npcId);
-        saveDatabase(db);
-      }
+    if (player) {
+      await dbManager.recordTaskProgress(player.companyId, player.email, npcId);
     }
   });
 
