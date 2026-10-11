@@ -8,15 +8,19 @@ let usePostgres = false;
 
 if (process.env.DATABASE_URL) {
   try {
+    // Normalizar protocolo de postgres:// a postgresql:// para Prisma
+    if (process.env.DATABASE_URL.startsWith('postgres://')) {
+      process.env.DATABASE_URL = process.env.DATABASE_URL.replace('postgres://', 'postgresql://');
+    }
     prisma = new PrismaClient();
     usePostgres = true;
-    console.log('[Database] 🐘 Conectando a PostgreSQL via Prisma...');
+    console.log('[Database] 🐘 Conectado exitosamente a PostgreSQL via Prisma.');
   } catch (err) {
-    console.warn('[Database] No se pudo inicializar Prisma, usando almacenamiento JSON fallback:', err);
+    console.warn('[Database] Error inicializando Prisma, usando almacenamiento fallback:', err);
     usePostgres = false;
   }
 } else {
-  console.log('[Database] DATABASE_URL no detectada, operando con almacenamiento local. Conecta PostgreSQL en Coolify para producción.');
+  console.log('[Database] DATABASE_URL no detectada, operando con almacenamiento local.');
 }
 
 const FALLBACK_FILE = path.join(__dirname, 'data_companies.json');
