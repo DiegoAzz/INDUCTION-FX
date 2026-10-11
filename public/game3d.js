@@ -357,8 +357,12 @@ window.addEventListener('keydown', (e) => {
   if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft' || key === 'arrowleft') keysPressed.left = true;
   if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') keysPressed.right = true;
 
-  if ((code === 'KeyE' || key === 'e') && nearbyTarget && npcModal.classList.contains('hidden')) {
-    openNpcModal(nearbyTarget);
+  if (code === 'KeyE' || key === 'e') {
+    if (nearbyTarget && npcModal.classList.contains('hidden')) {
+      openNpcModal(nearbyTarget);
+    } else if (window.currentNearbyPeer && peerActionModal && peerActionModal.classList.contains('hidden')) {
+      openPeerActionModal(window.currentNearbyPeer.id);
+    }
   }
 });
 
@@ -830,53 +834,206 @@ socket.on('office:npcs_updated', (npcs) => {
   populateAdminForm();
 });
 
-// Chat
-chatForm.addEventListener('submit', (e) => {
+// ----------------------------------------------------
+// SISTEMA DE LLAMADAS PRIVADAS 1 A 1 & CHAT PRIVADO (DM)
+// ----------------------------------------------------
+const tabPrivateDmBtn = document.getElementById('tabPrivateDmBtn');
+const privateDmView = document.getElementById('privateDmView');
+const privateDmMessages = document.getElementById('privateDmMessages');
+const privateDmForm = document.getElementById('privateDmForm');
+const privateDmInput = document.getElementById('privateDmInput');
+const privateDmSendBtn = document.getElementById('privateDmSendBtn');
+const dmTargetHeader = document.getElementById('dmTargetHeader');
+
+const peerActionModal = document.getElementById('peerActionModal');
+const peerModalName = document.getElementById('peerModalName');
+const peerModalRole = document.getElementById('peerModalRole');
+const peerStartCallBtn = document.getElementById('peerStartCallBtn');
+const peerStartChatBtn = document.getElementById('peerStartChatBtn');
+const peerModalCloseBtn = document.getElementById('peerModalCloseBtn');
+
+const incomingCallAlert = document.getElementById('incomingCallAlert');
+const callerNameDisplay = document.getElementById('callerNameDisplay');
+const acceptCallBtn = document.getElementById('acceptCallBtn');
+const rejectCallBtn = document.getElementById('rejectCallBtn');
+
+const activeCallBar = document.getElementById('activeCallBar');
+const activeCallPartnerName = document.getElementById('activeCallPartnerName');
+const hangupCallBtn = document.getElementById('hangupCallBtn');
+
+let selectedPeerId = null;
+let activeCallPartnerId = null;
+let incomingCallerId = null;
+let ringtoneInterval = null;
+
+// Sintetizador de Timbre de Llamada
+function playRingtone() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(480, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+  } catch (e) { }
+}
+
+function startRingtone() {
+  playRingtone();
+  ringtoneInterval = setInterval(playRingtone, 2000);
+}
+
+function stopRingtone() {
+  if (ringtoneInterval) {
+    clearInterval(ringtoneInterval);
+    ringtoneInterval = null;
+  }
+}
+
+// Abrir modal de opciones cuando te acercas a un compañero
+function openPeerActionModal(peerId) {
+  const peer = players[peerId];
+  if (!peer) return;
+
+  selectedPeerId = peerId;
+  peerModalName.textContent = peer.name;
+  peerModalRole.textContent = `${peer.role || 'Funcionario'} (${peer.department || 'General'})`;
+  peerActionModal.classList.remove('hidden');
+}
+
+peerModalCloseBtn.addEventListener('click', () => peerActionModal.classList.add('hidden'));
+
+// 1. Iniciar Llamada de Voz Privada
+peerStartCallBtn.addEventListener('click', async () => {
+  peerActionModal.classList.add('hidden');
+  if (!selectedPeerId) return;
+
+  await ensureMicrophone();
+  socket.emit('call:request', { targetId: selectedPeerId });
+  alert(`Llamando a ${peerModalName.textContent}... Esperando que acepte.`);
+});
+
+// 2. Iniciar Chat Privado Directo (DM)
+peerStartChatBtn.addEventListener('click', () => {
+  peerActionModal.classList.add('hidden');
+  if (!selectedPeerId) return;
+
+  const peer = players[selectedPeerId];
+  dmTargetHeader.textContent = `Chat Privado con ${peer.name} (${peer.role})`;
+  privateDmInput.disabled = false;
+  privateDmSendBtn.disabled = false;
+  privateDmInput.focus();
+
+  // Abrir pestaña de chat privado
+  switchTab(tabPrivateDmBtn, privateDmView);
+});
+
+// Recibir Llamada Entrante
+socket.on('call:incoming', (data) => {
+  incomingCallerId = data.callerId;
+  callerNameDisplay.textContent = `${data.callerName} (${data.callerRole})`;
+  incomingCallAlert.classList.remove('hidden');
+  startRingtone();
+});
+
+// Aceptar Llamada
+acceptCallBtn.addEventListener('click', async () => {
+  stopRingtone();
+  incomingCallAlert.classList.add('hidden');
+  if (!incomingCallerId) return;
+
+  await ensureMicrophone();
+  socket.emit('call:accept', { callerId: incomingCallerId });
+});
+
+// Rechazar Llamada
+rejectCallBtn.addEventListener('click', () => {
+  stopRingtone();
+  incomingCallAlert.classList.add('hidden');
+  if (incomingCallerId) {
+    socket.emit('call:reject', { callerId: incomingCallerId });
+    incomingCallerId = null;
+  }
+});
+
+socket.on('call:declined', (data) => {
+  alert(`${data.partnerName} no puede atender tu llamada en este momento.`);
+});
+
+// Llamada Conectada Exitosamente
+socket.on('call:connected', (data) => {
+  activeCallPartnerId = data.partnerId;
+  activeCallPartnerName.textContent = data.partnerName;
+  activeCallBar.classList.remove('hidden');
+
+  // En llamada privada, activar micrófono continuo entre ambos
+  if (localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = true);
+  }
+  playRadioBeep(true);
+});
+
+// Colgar / Terminar Llamada
+hangupCallBtn.addEventListener('click', () => {
+  if (activeCallPartnerId) {
+    socket.emit('call:hangup', { partnerId: activeCallPartnerId });
+  }
+  endActiveCall();
+});
+
+socket.on('call:ended', () => {
+  alert('La llamada privada ha finalizado.');
+  endActiveCall();
+});
+
+function endActiveCall() {
+  activeCallPartnerId = null;
+  activeCallBar.classList.add('hidden');
+  if (localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = false);
+  }
+  playRadioBeep(false);
+}
+
+// Enviar Mensaje Privado DM
+privateDmForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const text = chatInput.value.trim();
-  if (text) {
-    socket.emit('player:message', { text });
-    chatInput.value = '';
+  const text = privateDmInput.value.trim();
+  if (text && selectedPeerId) {
+    socket.emit('chat:private_dm', { targetId: selectedPeerId, text });
+    privateDmInput.value = '';
   }
 });
 
-socket.on('chat:broadcast', (msg) => {
-  let isNear = false;
-  const me = players[selfId];
-  if (me) {
-    const dist = Math.hypot(me.x - msg.x, (me.z || 0) - (msg.z || 0));
-    if (dist < 22) isNear = true;
-  }
-  addChatMessage({ ...msg, isNear, isMeeting: msg.inMeetingRoom });
-});
-
-function addChatMessage(msg) {
+// Recibir Mensaje Privado DM
+socket.on('chat:private_receive', (msg) => {
   const el = document.createElement('div');
-  el.className = `chat-msg ${msg.isNear ? 'near' : ''} ${msg.isMeeting ? 'meeting' : ''}`;
-  if (msg.isSystem) {
-    el.innerHTML = `<small style="color: #94a3b8">${msg.text}</small>`;
-  } else {
-    el.innerHTML = `
-      <div class="chat-msg-header">
-        <strong>${escapeHtml(msg.senderName)}</strong>
-        <span>${msg.timestamp || ''} ${msg.isMeeting ? '🔒 (Junta)' : (msg.isNear ? '• (Cerca)' : '')}</span>
-      </div>
-      <div>${escapeHtml(msg.text)}</div>
-    `;
-  }
-  chatMessages.appendChild(el);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-}
+  const isMe = msg.senderId === selfId;
+  el.className = 'chat-msg';
+  el.style.borderLeftColor = '#8b5cf6';
+  el.style.background = 'rgba(139, 92, 246, 0.08)';
 
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
+  el.innerHTML = `
+    <div class="chat-msg-header">
+      <strong style="color: #c4b5fd;">🔒 ${escapeHtml(msg.senderName)} ${isMe ? '(Tú)' : ''}</strong>
+      <span>${msg.timestamp || ''}</span>
+    </div>
+    <div>${escapeHtml(msg.text)}</div>
+  `;
 
-function updatePlayerCount() {
-  playerCountEl.textContent = Object.keys(players).length;
-}
+  privateDmMessages.appendChild(el);
+  privateDmMessages.scrollTop = privateDmMessages.scrollHeight;
+});
+
+tabPrivateDmBtn.addEventListener('click', () => switchTab(tabPrivateDmBtn, privateDmView));
 
 // ----------------------------------------------------
 // AUDIO WALKIE-TALKIE PUSH-TO-TALK (ESTILO RADIO TAXI)
@@ -1269,8 +1426,11 @@ function updatePlayerPhysics(delta) {
   camera.position.z += (camTargetZ - camera.position.z) * 0.08;
   camera.lookAt(playerMesh.position.x, 1.5, playerMesh.position.z);
 
-  // Detección de cercanía a NPCs
+  // Detección de cercanía a NPCs o a Compañeros Reales
   nearbyTarget = null;
+  let nearbyPeer = null;
+
+  // 1. Verificar NPCs
   for (const item of npcMeshes) {
     const dist = Math.hypot(playerMesh.position.x - item.npcData.x, playerMesh.position.z - item.npcData.z);
     if (dist < 6.5) {
@@ -1279,14 +1439,43 @@ function updatePlayerPhysics(delta) {
     }
   }
 
+  // 2. Si no hay NPC, verificar compañeros reales
+  if (!nearbyTarget) {
+    for (const pId in players) {
+      if (pId !== selfId && playerMeshes[pId]) {
+        const peerMesh = playerMeshes[pId];
+        const dist = Math.hypot(playerMesh.position.x - peerMesh.position.x, playerMesh.position.z - peerMesh.position.z);
+        if (dist < 5.5) {
+          nearbyPeer = { id: pId, ...players[pId] };
+          break;
+        }
+      }
+    }
+  }
+
   if (nearbyTarget) {
     promptTargetName.textContent = nearbyTarget.name;
     interactionPrompt.classList.remove('hidden');
-    if (mobileInteractBtn) mobileInteractBtn.classList.remove('hidden');
+    if (mobileInteractBtn) {
+      mobileInteractBtn.textContent = '💬 Hablar';
+      mobileInteractBtn.classList.remove('hidden');
+      mobileInteractBtn.onclick = () => openNpcModal(nearbyTarget);
+    }
+  } else if (nearbyPeer) {
+    promptTargetName.textContent = `${nearbyPeer.name} (Llamar / Chat Privado)`;
+    interactionPrompt.classList.remove('hidden');
+    if (mobileInteractBtn) {
+      mobileInteractBtn.textContent = '👥 Opciones';
+      mobileInteractBtn.classList.remove('hidden');
+      mobileInteractBtn.onclick = () => openPeerActionModal(nearbyPeer.id);
+    }
   } else {
     interactionPrompt.classList.add('hidden');
     if (mobileInteractBtn) mobileInteractBtn.classList.add('hidden');
   }
+
+  // Tecla 'E' con compañero real
+  window.currentNearbyPeer = nearbyPeer;
 
   // Alerta de Sala de Juntas
   if (playerMesh.position.z < -10 && Math.abs(playerMesh.position.x) < 12) {

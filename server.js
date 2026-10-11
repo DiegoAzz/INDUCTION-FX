@@ -392,6 +392,82 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ----------------------------------------------------
+  // SISTEMA DE LLAMADAS PRIVADAS 1 A 1 & CHAT PRIVADO
+  // ----------------------------------------------------
+
+  // 1. Enviar solicitud de llamada privada
+  socket.on('call:request', (data) => {
+    const caller = activePlayers[socket.id];
+    const targetSocketId = data.targetId;
+
+    if (caller && activePlayers[targetSocketId]) {
+      io.to(targetSocketId).emit('call:incoming', {
+        callerId: socket.id,
+        callerName: caller.name,
+        callerRole: caller.role,
+        callerDept: caller.department
+      });
+    }
+  });
+
+  // 2. Aceptar llamada privada
+  socket.on('call:accept', (data) => {
+    const targetSocketId = data.callerId;
+    const receiver = activePlayers[socket.id];
+
+    if (receiver && activePlayers[targetSocketId]) {
+      // Notificar a quien llamó que la llamada fue aceptada
+      io.to(targetSocketId).emit('call:connected', {
+        partnerId: socket.id,
+        partnerName: receiver.name
+      });
+
+      // Confirmar al receptor
+      socket.emit('call:connected', {
+        partnerId: targetSocketId,
+        partnerName: activePlayers[targetSocketId].name
+      });
+    }
+  });
+
+  // 3. Rechazar llamada
+  socket.on('call:reject', (data) => {
+    const callerId = data.callerId;
+    if (activePlayers[callerId]) {
+      io.to(callerId).emit('call:declined', {
+        partnerName: activePlayers[socket.id] ? activePlayers[socket.id].name : 'El compañero'
+      });
+    }
+  });
+
+  // 4. Finalizar / Colgar llamada
+  socket.on('call:hangup', (data) => {
+    const partnerId = data.partnerId;
+    if (activePlayers[partnerId]) {
+      io.to(partnerId).emit('call:ended');
+    }
+  });
+
+  // 5. Chat Privado (DM 1 a 1)
+  socket.on('chat:private_dm', (data) => {
+    const sender = activePlayers[socket.id];
+    const targetSocketId = data.targetId;
+
+    if (sender && activePlayers[targetSocketId]) {
+      const dmPayload = {
+        senderId: socket.id,
+        senderName: sender.name,
+        text: data.text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      // Enviar al destinatario y confirmar al emisor
+      io.to(targetSocketId).emit('chat:private_receive', dmPayload);
+      socket.emit('chat:private_receive', dmPayload);
+    }
+  });
+
   // Desconexión
   socket.on('disconnect', () => {
     const player = activePlayers[socket.id];

@@ -205,6 +205,30 @@
           <span>TRANSMITIENDO EN VIVO...</span>
         </div>
 
+        <!-- Alerta de Llamada Entrante -->
+        <div id="incomingCallAlert" class="incoming-call-card hidden">
+          <div class="incoming-call-info">
+            <span class="call-pulse-dot"></span>
+            <div>
+              <strong id="callerNameDisplay">Compañero</strong>
+              <p>Llamada de voz entrante...</p>
+            </div>
+          </div>
+          <div class="incoming-call-actions">
+            <button id="acceptCallBtn" class="btn-call-accept">Aceptar ✔️</button>
+            <button id="rejectCallBtn" class="btn-call-reject">Rechazar ✖️</button>
+          </div>
+        </div>
+
+        <!-- Barra flotante de Llamada Activa -->
+        <div id="activeCallBar" class="active-call-bar hidden">
+          <div class="active-call-status">
+            <span class="online-dot"></span>
+            <span>En llamada con <strong id="activeCallPartnerName">Compañero</strong></span>
+          </div>
+          <button id="hangupCallBtn" class="btn-call-hangup">Colgar ☎️</button>
+        </div>
+
         <!-- Alerta de Sala de Juntas -->
         <div id="meetingAlert" class="meeting-alert hidden">
           🔒 Estás en la <strong>Sala de Juntas</strong> (Privado)
@@ -214,21 +238,34 @@
       <!-- Barra Lateral -->
       <aside class="sidebar">
         <div class="sidebar-tabs">
-          <button class="tab-btn active" id="tabChatBtn">💬 Chat</button>
+          <button class="tab-btn active" id="tabChatBtn">💬 General</button>
+          <button class="tab-btn" id="tabPrivateDmBtn">🔒 Privado</button>
           <button class="tab-btn" id="tabTasksBtn">📋 Inducción</button>
-          <button class="tab-btn" id="tabAdminBtn">⚙️ Admin RRHH</button>
         </div>
 
-        <!-- Vista de Chat -->
+        <!-- Vista de Chat General -->
         <div id="chatView" class="tab-content active">
           <div class="proximity-banner">
             <span class="icon">📡</span>
-            <small>Audio espacial y chat por proximidad activo en 3D.</small>
+            <small>Audio espacial y radio walkie-talkie para la oficina.</small>
           </div>
           <div id="chatMessages" class="chat-messages"></div>
           <form id="chatForm" class="chat-input-bar">
-            <input type="text" id="chatInput" placeholder="Escribe un mensaje a la oficina..." autocomplete="off">
+            <input type="text" id="chatInput" placeholder="Mensaje a la oficina..." autocomplete="off">
             <button type="submit">Enviar</button>
+          </form>
+        </div>
+
+        <!-- Vista de Chat Privado 1 a 1 -->
+        <div id="privateDmView" class="tab-content">
+          <div class="proximity-banner" style="background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.2); color: #c4b5fd;">
+            <span class="icon">🔒</span>
+            <small id="dmTargetHeader">Selecciona un compañero cercano para chatear en privado.</small>
+          </div>
+          <div id="privateDmMessages" class="chat-messages"></div>
+          <form id="privateDmForm" class="chat-input-bar">
+            <input type="text" id="privateDmInput" placeholder="Mensaje privado directo..." autocomplete="off" disabled>
+            <button type="submit" id="privateDmSendBtn" disabled>Enviar</button>
           </form>
         </div>
 
@@ -248,35 +285,31 @@
           </div>
           <ul class="task-list" id="taskList"></ul>
         </div>
-
-        <!-- Vista de Administración para RRHH -->
-        <div id="adminView" class="tab-content">
-          <div class="admin-header">
-            <h3>Personalizar NPCs de tu Empresa</h3>
-            <p>Ajusta las políticas y mensajes de bienvenida que ven tus nuevos ingresos.</p>
-          </div>
-          <form id="adminEditForm" class="admin-form">
-            <div class="form-group">
-              <label for="adminSelectNpc">Seleccionar NPC / Puesto</label>
-              <select id="adminSelectNpc"></select>
-            </div>
-            <div class="form-group">
-              <label for="adminNpcName">Nombre y Cargo del NPC</label>
-              <input type="text" id="adminNpcName" required>
-            </div>
-            <div class="form-group">
-              <label for="adminNpcDept">Departamento</label>
-              <input type="text" id="adminNpcDept" required>
-            </div>
-            <div class="form-group">
-              <label for="adminNpcInfo">Diálogo de Inducción / Políticas Corporativas</label>
-              <textarea id="adminNpcInfo" rows="4" required></textarea>
-            </div>
-            <button type="submit" class="btn-primary">Guardar Cambios en la Empresa 💾</button>
-          </form>
-        </div>
       </aside>
     </main>
+  </div>
+
+  <!-- Modal Interacción Directa con Compañero (Llamar vs Chat Privado) -->
+  <div id="peerActionModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px; text-align: center;">
+      <div class="modal-header">
+        <span class="badge">Compañero de Trabajo</span>
+        <h2 id="peerModalName">Nombre del Compañero</h2>
+        <p id="peerModalRole">Cargo y Dependencia</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+        <button id="peerStartCallBtn" class="btn-primary" style="background: #10b981; font-size: 15px; padding: 14px;">
+          📞 Iniciar Llamada de Voz Privada
+        </button>
+        <button id="peerStartChatBtn" class="btn-primary" style="background: #3b82f6; font-size: 15px; padding: 14px;">
+          💬 Enviar Chat Privado (DM)
+        </button>
+        <button id="peerModalCloseBtn" class="btn-logout" style="width: 100%; margin-top: 6px;">
+          Cerrar
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal Conversacional de Diálogo con NPCs con Cara Real -->

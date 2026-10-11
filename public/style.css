@@ -382,12 +382,128 @@ body {
   display: none !important;
 }
 
-.live-dot {
-  width: 10px;
-  height: 10px;
+/* LLAMADA PRIVADA 1 A 1 */
+.incoming-call-card {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 26, 46, 0.95);
+  border: 2px solid #10b981;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(16, 185, 129, 0.4);
+  border-radius: 14px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 60;
+  backdrop-filter: blur(10px);
+  animation: pulse 1s infinite;
+}
+
+.incoming-call-card.hidden {
+  display: none !important;
+}
+
+.incoming-call-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.incoming-call-info strong {
+  font-size: 15px;
+  color: #fff;
+}
+
+.incoming-call-info p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.call-pulse-dot {
+  width: 14px;
+  height: 14px;
   background: #10b981;
   border-radius: 50%;
-  box-shadow: 0 0 10px #10b981;
+  box-shadow: 0 0 14px #10b981;
+}
+
+.incoming-call-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-call-accept {
+  background: #10b981;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.btn-call-accept:hover {
+  background: #059669;
+}
+
+.btn-call-reject {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-call-reject:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* BARRA DE LLAMADA ACTIVA */
+.active-call-bar {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  border-radius: 30px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 60;
+  backdrop-filter: blur(8px);
+}
+
+.active-call-bar.hidden {
+  display: none !important;
+}
+
+.active-call-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #34d399;
+}
+
+.btn-call-hangup {
+  background: #ef4444;
+  border: none;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .header-actions {
