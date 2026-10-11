@@ -527,9 +527,9 @@ scene.add(cafeGroup);
 // ----------------------------------------------------
 // 5. CUBÍCULOS Y DIVISIONES DE CRISTAL INTERIORES
 // ----------------------------------------------------
-createGlassPartition(-22, 5, 24, 0);
-createGlassPartition(22, 5, 24, 0);
-createGlassPartition(0, 8, 18, Math.PI / 2);
+// Mamparas laterales que separan las áreas de trabajo a izquierda y derecha, dejando el pasillo central 100% libre
+createGlassPartition(-24, 6, 20, 0);
+createGlassPartition(24, 6, 20, 0);
 
 // Plantas de interior elegantes en esquinas
 function createOfficePlant(x, z) {
@@ -2370,16 +2370,32 @@ function updatePlayerPhysics(delta) {
   }
 
   // Función de prueba de colisión con radio del jugador
-  function checkCollision(px, pz, radius = 0.6) {
+  function checkCollision(px, pz, radius = 0.5) {
     for (let i = 0; i < officeColliders.length; i++) {
       const c = officeColliders[i];
       // Comprobar si el círculo del jugador se solapa con el rectángulo AABB expandido
       if (px + radius > c.minX && px - radius < c.maxX &&
           pz + radius > c.minZ && pz - radius < c.maxZ) {
-        return true;
+        return c; // Retorna el obstáculo para poder destrabarse
       }
     }
-    return false;
+    return null;
+  }
+
+  // Mecanismo anti-atascamiento continuo: Si el jugador quedó dentro de un muro, empujarlo hacia el espacio libre
+  const stuckObstacle = checkCollision(playerMesh.position.x, playerMesh.position.z, 0.4);
+  if (stuckObstacle) {
+    // Empujar hacia el borde más cercano fuera del obstáculo
+    const dLeft = Math.abs(playerMesh.position.x - stuckObstacle.minX);
+    const dRight = Math.abs(playerMesh.position.x - stuckObstacle.maxX);
+    const dTop = Math.abs(playerMesh.position.z - stuckObstacle.minZ);
+    const dBottom = Math.abs(playerMesh.position.z - stuckObstacle.maxZ);
+    const minD = Math.min(dLeft, dRight, dTop, dBottom);
+
+    if (minD === dLeft) playerMesh.position.x = stuckObstacle.minX - 0.55;
+    else if (minD === dRight) playerMesh.position.x = stuckObstacle.maxX + 0.55;
+    else if (minD === dTop) playerMesh.position.z = stuckObstacle.minZ - 0.55;
+    else playerMesh.position.z = stuckObstacle.maxZ + 0.55;
   }
 
   if (isMoving) {
@@ -2396,12 +2412,12 @@ function updatePlayerPhysics(delta) {
     let nextZ = Math.max(-36, Math.min(36, currentZ + moveZ));
 
     // 1. Probar mover en X
-    if (checkCollision(nextX, currentZ, 0.55)) {
+    if (checkCollision(nextX, currentZ, 0.45)) {
       nextX = currentX; // Colisión en X: deslizar por el muro
     }
 
     // 2. Probar mover en Z
-    if (checkCollision(nextX, nextZ, 0.55)) {
+    if (checkCollision(nextX, nextZ, 0.45)) {
       nextZ = currentZ; // Colisión en Z: deslizar por el muro
     }
 

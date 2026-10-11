@@ -675,9 +675,9 @@ io.on('connection', (socket) => {
       tieColor: empTieColor,
       gender: empGender,
       avatarStyle: empAvatarStyle,
-      x: (Math.random() * 6 - 3),
+      x: 0,
       y: 0,
-      z: (Math.random() * 6 - 3),
+      z: 5,
       rotationY: 0,
       inMeetingRoom: false,
       isSpeaking: false
