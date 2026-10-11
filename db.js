@@ -81,8 +81,13 @@ const dbManager = {
   async getCompanyBySlug(slug) {
     if (usePostgres) {
       try {
-        const c = await prisma.company.findUnique({
-          where: { slug: slug },
+        const c = await prisma.company.findFirst({
+          where: {
+            OR: [
+              { slug: slug },
+              { id: slug }
+            ]
+          },
           include: {
             departments: true,
             employees: true
@@ -97,9 +102,12 @@ const dbManager = {
               email: e.email,
               role: e.role,
               department: c.departments.find(d => d.id === e.departmentId)?.name || 'General',
-              color: e.color
+              color: e.color || '#3B82F6'
             };
           });
+
+          const deptCount = c.departments.length || 1;
+          const radius = 22;
 
           return {
             id: c.slug,
@@ -108,17 +116,23 @@ const dbManager = {
             adminEmail: c.adminEmail,
             employeeCountExpected: c.employeeCountExpected,
             departments: c.departments,
-            npcs: c.departments.map(d => ({
-              id: d.id,
-              name: d.leaderName || `Líder de ${d.name}`,
-              role: d.leaderRole || `Director(a) de ${d.name}`,
-              department: d.name,
-              avatarUrl: d.avatarUrl,
-              x: d.posX,
-              z: d.posZ,
-              color: d.color,
-              info: d.description
-            })),
+            npcs: c.departments.map((d, idx) => {
+              const angle = (idx / deptCount) * Math.PI * 2 - Math.PI / 2;
+              const calcX = Math.round(Math.cos(angle) * radius);
+              const calcZ = Math.round(Math.sin(angle) * radius);
+
+              return {
+                id: d.id,
+                name: d.leaderName || `Líder de ${d.name}`,
+                role: d.leaderRole || `Director(a) de ${d.name}`,
+                department: d.name,
+                avatarUrl: d.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+                x: (typeof d.posX === 'number' && !isNaN(d.posX) && d.posX !== 0) ? d.posX : calcX,
+                z: (typeof d.posZ === 'number' && !isNaN(d.posZ) && d.posZ !== 0) ? d.posZ : calcZ,
+                color: d.color || '#3B82F6',
+                info: d.description || `Área de ${d.name}. Conoce los procesos corporativos de nuestra dependencia.`
+              };
+            }),
             employees: empMap
           };
         }

@@ -207,18 +207,25 @@ const textureLoader = new THREE.TextureLoader();
 let npcMeshes = [];
 
 function buildNpcWorld(npcs) {
+  if (!Array.isArray(npcs)) npcs = [];
   // Limpiar NPCs previos si existen
-  npcMeshes.forEach(item => scene.remove(item.mesh));
+  npcMeshes.forEach(item => {
+    if (item && item.mesh) scene.remove(item.mesh);
+  });
   npcMeshes = [];
   officeNpcs = npcs;
 
-  npcs.forEach(npc => {
+  npcs.forEach((npc, index) => {
+    const color = (npc.color && typeof npc.color === 'string') ? npc.color : '#3B82F6';
+    const x = (typeof npc.x === 'number' && !isNaN(npc.x)) ? npc.x : 0;
+    const z = (typeof npc.z === 'number' && !isNaN(npc.z)) ? npc.z : 0;
+
     const stationGroup = new THREE.Group();
 
     // Alfombra de color
     const carpet = new THREE.Mesh(
       new THREE.PlaneGeometry(10, 8),
-      new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.8 })
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.8 })
     );
     carpet.rotation.x = -Math.PI / 2;
     carpet.position.y = 0.015;
@@ -244,7 +251,7 @@ function buildNpcWorld(npcs) {
 
     const screen = new THREE.Mesh(
       new THREE.BoxGeometry(1.4, 0.9, 0.06),
-      new THREE.MeshStandardMaterial({ color: npc.color, emissive: npc.color, emissiveIntensity: 0.6 })
+      new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.6 })
     );
     screen.position.set(0, 2.1, -0.45);
     screen.rotation.x = -0.15;
@@ -254,7 +261,7 @@ function buildNpcWorld(npcs) {
     const npcGroup = new THREE.Group();
     const body = new THREE.Mesh(
       new THREE.CylinderGeometry(0.65, 0.8, 1.8, 16),
-      new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.4 })
+      new THREE.MeshStandardMaterial({ color: color, roughness: 0.4 })
     );
     body.position.y = 1.3;
     body.castShadow = true;
@@ -262,15 +269,24 @@ function buildNpcWorld(npcs) {
 
     // Retrato / Cara Real flotante del NPC (Sprite o Disco 3D con foto)
     if (npc.avatarUrl) {
-      const faceTexture = textureLoader.load(npc.avatarUrl);
-      const faceGeo = new THREE.CircleGeometry(0.7, 32);
-      const faceMat = new THREE.MeshBasicMaterial({ 
-        map: faceTexture, 
-        side: THREE.DoubleSide 
-      });
-      const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-      faceMesh.position.set(0, 2.7, 0.1);
-      npcGroup.add(faceMesh);
+      try {
+        const faceTexture = textureLoader.load(npc.avatarUrl);
+        const faceGeo = new THREE.CircleGeometry(0.7, 32);
+        const faceMat = new THREE.MeshBasicMaterial({ 
+          map: faceTexture, 
+          side: THREE.DoubleSide 
+        });
+        const faceMesh = new THREE.Mesh(faceGeo, faceMat);
+        faceMesh.position.set(0, 2.7, 0.1);
+        npcGroup.add(faceMesh);
+      } catch (err) {
+        const head = new THREE.Mesh(
+          new THREE.SphereGeometry(0.6, 16, 16),
+          new THREE.MeshStandardMaterial({ color: 0xffedd5 })
+        );
+        head.position.y = 2.6;
+        npcGroup.add(head);
+      }
     } else {
       const head = new THREE.Mesh(
         new THREE.SphereGeometry(0.6, 16, 16),
@@ -283,11 +299,11 @@ function buildNpcWorld(npcs) {
     npcGroup.position.set(0, 0, -1.8);
     stationGroup.add(npcGroup);
 
-    stationGroup.position.set(npc.x, 0, npc.z);
+    stationGroup.position.set(x, 0, z);
     scene.add(stationGroup);
 
     npcMeshes.push({
-      npcData: npc,
+      npcData: { ...npc, x, z, color },
       mesh: stationGroup,
       npcModel: npcGroup
     });
@@ -300,6 +316,7 @@ function buildNpcWorld(npcs) {
 const playerMeshes = {};
 
 function createAvatarMesh(colorHex, isSelf = false) {
+  const safeColor = (colorHex && typeof colorHex === 'string') ? colorHex : '#3b82f6';
   const group = new THREE.Group();
 
   const shadow = new THREE.Mesh(
@@ -312,7 +329,7 @@ function createAvatarMesh(colorHex, isSelf = false) {
 
   const body = new THREE.Mesh(
     new THREE.CylinderGeometry(0.65, 0.8, 1.7, 16),
-    new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 })
+    new THREE.MeshStandardMaterial({ color: safeColor, roughness: 0.3 })
   );
   body.position.y = 1.3;
   body.castShadow = true;
@@ -1504,3 +1521,13 @@ function updatePlayerPhysics(delta) {
     meetingAlert.classList.add('hidden');
   }
 }
+
+// ----------------------------------------------------
+// INICIALIZACIÓN INMEDIATA DEL MOTOR 3D
+// ----------------------------------------------------
+handleResize();
+if (!isAnimating) {
+  isAnimating = true;
+  animate();
+}
+

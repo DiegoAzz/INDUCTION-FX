@@ -11,7 +11,16 @@ const io = new Server(server, { cors: { origin: "*" } });
 const PORT = process.env.PORT || 3000;
 const DB_FILE = path.join(__dirname, 'data_companies.json');
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0
+}));
 app.use(express.json());
 
 // ----------------------------------------------------------------
@@ -269,10 +278,23 @@ const activePlayers = {};
 io.on('connection', (socket) => {
   // Login / Ingreso de funcionario a la oficina 3D
   socket.on('player:join', async (data) => {
-    const companyId = data.companyId || 'demo-corp';
-    const company = await dbManager.getCompanyBySlug(companyId);
-    if (!company) return;
+    let companyId = data.companyId || 'demo-corp';
+    let company = await dbManager.getCompanyBySlug(companyId);
 
+    if (!company) {
+      const allCompanies = await dbManager.getCompanies();
+      if (allCompanies && allCompanies.length > 0) {
+        companyId = allCompanies[0].id;
+        company = await dbManager.getCompanyBySlug(companyId);
+      }
+    }
+
+    if (!company) {
+      console.warn(`[Induction Warning] No se encontró ninguna empresa para ${data.companyId}`);
+      return;
+    }
+
+    console.log(`[Induction] Funcionario "${data.name}" se unió a: ${company.name} (${companyId})`);
     socket.join(companyId);
 
     const email = data.email || `${(data.name || 'user').replace(/\s+/g, '.').toLowerCase()}@${company.id}.com`;
