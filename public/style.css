@@ -275,13 +275,13 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
-#gameCanvas {
-  background: #0f172a;
-  border: 2px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+#canvas3dContainer canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 .interaction-prompt {

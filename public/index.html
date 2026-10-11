@@ -3,20 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Induction - Espacio Corporativo Interactivo</title>
+  <title>Induction 3D - Videojuego Corporativo de Inducción</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Three.js 3D Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- Modal de Bienvenida / Ingreso -->
+  <!-- Modal de Ingreso -->
   <div id="joinModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <span class="badge">Induction Enterprise</span>
+        <span class="badge">Induction 3D Enterprise</span>
         <h2>Bienvenido a tu Primer Día</h2>
-        <p>Configura tu avatar corporativo para comenzar tu recorrido de inducción.</p>
+        <p>Entra a la sede corporativa en 3D y conoce a los equipos y NPCs de inducción.</p>
       </div>
 
       <form id="joinForm">
@@ -33,12 +35,12 @@
             <option value="Diseño de Producto">🎨 Diseño de Producto</option>
             <option value="Recursos Humanos">🤝 Recursos Humanos</option>
             <option value="Operaciones & IT">⚡ Operaciones & IT</option>
-            <option value="Director / Manager">👔 Director / Manager</option>
+            <option value="Director General">👔 Director General</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label>Color de tu Avatar</label>
+          <label>Color de tu Avatar 3D</label>
           <div class="color-picker">
             <label class="color-swatch" style="--c: #3B82F6">
               <input type="radio" name="avatarColor" value="#3B82F6" checked>
@@ -63,7 +65,7 @@
           </div>
         </div>
 
-        <button type="submit" class="btn-primary">Entrar a la Oficina 🚀</button>
+        <button type="submit" class="btn-primary">Entrar a la Oficina 3D 🚀</button>
       </form>
     </div>
   </div>
@@ -75,21 +77,22 @@
       <div class="office-brand">
         <div class="status-indicator"></div>
         <div>
-          <h1 class="brand-title">Induction HQ</h1>
-          <p class="brand-sub">Sede Virtual Corporativa • Audio Espacial & Presencia</p>
+          <h1 class="brand-title">Induction 3D HQ</h1>
+          <p class="brand-sub">Sede 3D • NPCs Inteligentes & Audio Espacial</p>
         </div>
       </div>
 
-      <!-- Barra de herramientas de Audio / Micrófono -->
+      <div class="controls-hint">
+        <span>🎮 Muévete con <strong>W, A, S, D</strong> o <strong>Flechas</strong></span>
+        <span>💡 Habla con NPCs y puestos con <strong>[ E ]</strong></span>
+      </div>
+
+      <!-- Barra de herramientas de Voz -->
       <div class="voice-controls">
         <button id="toggleMicBtn" class="btn-voice" title="Activar/Silenciar Micrófono">
           <span id="micIcon">🎤</span>
           <span id="micText">Voz Desactivada</span>
         </button>
-        <div class="voice-badge">
-          <span class="radar-dot"></span>
-          Audio Espacial Activo (180px)
-        </div>
       </div>
 
       <div class="online-pill">
@@ -97,45 +100,44 @@
       </div>
     </header>
 
-    <!-- Área de Juego -->
+    <!-- Contenedor 3D y Sidebar -->
     <main class="game-main">
-      <div class="canvas-wrapper">
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+      <div id="canvas3dContainer" class="canvas-wrapper">
+        <!-- Three.js inyecta el canvas aquí -->
 
-        <!-- Prompt de interacción flotante -->
+        <!-- Indicador de acción interactiva -->
         <div id="interactionPrompt" class="interaction-prompt hidden">
-          Presiona <kbd>E</kbd> para consultar la estación
+          Presiona <kbd>E</kbd> para hablar con <strong id="promptTargetName">el NPC</strong>
         </div>
 
         <!-- Alerta de Sala de Juntas -->
         <div id="meetingAlert" class="meeting-alert hidden">
-          🔒 Estás dentro de la <strong>Sala de Juntas</strong> (Audio y Chat Aislados)
+          🔒 Estás dentro de la <strong>Sala de Juntas Ejecutiva</strong>
         </div>
       </div>
 
-      <!-- Barra Lateral -->
+      <!-- Sidebar -->
       <aside class="sidebar">
-        <!-- Pestañas -->
         <div class="sidebar-tabs">
           <button class="tab-btn active" id="tabChatBtn">💬 Chat</button>
           <button class="tab-btn" id="tabTasksBtn">📋 Inducción</button>
           <button class="tab-btn" id="tabAdminBtn">⚙️ Admin RRHH</button>
         </div>
 
-        <!-- 1. Chat View -->
+        <!-- Chat -->
         <div id="chatView" class="tab-content active">
           <div class="proximity-banner">
             <span class="icon">📡</span>
-            <small>Mensajes en verde: compañeros dentro de tu radio de voz.</small>
+            <small>Audio espacial y chat por proximidad activo en 3D.</small>
           </div>
           <div id="chatMessages" class="chat-messages"></div>
           <form id="chatForm" class="chat-input-bar">
-            <input type="text" id="chatInput" placeholder="Escribe un mensaje o saluda..." autocomplete="off">
+            <input type="text" id="chatInput" placeholder="Escribe un mensaje a la oficina..." autocomplete="off">
             <button type="submit">Enviar</button>
           </form>
         </div>
 
-        <!-- 2. Onboarding Tasks View -->
+        <!-- Inducción Checklist -->
         <div id="tasksView" class="tab-content">
           <div class="checklist-header">
             <div class="progress-wrap">
@@ -147,24 +149,24 @@
                 <div id="progressBarFill" class="progress-bar-fill" style="width: 0%"></div>
               </div>
             </div>
-            <p>Visita cada puesto y presiona <strong>[E]</strong> para completar tu onboarding.</p>
+            <p>Habla con los NPCs de cada área para completar tu inducción.</p>
           </div>
           <ul class="task-list" id="taskList"></ul>
         </div>
 
-        <!-- 3. Admin Panel View -->
+        <!-- Admin RRHH -->
         <div id="adminView" class="tab-content">
           <div class="admin-header">
-            <h3>Gestor de Estaciones Corporativas</h3>
-            <p>Personaliza en tiempo real los mensajes que ven los nuevos empleados.</p>
+            <h3>Gestor de Estaciones & NPCs</h3>
+            <p>Edita en vivo los diálogos e información que brindan los NPCs.</p>
           </div>
           <form id="adminEditForm" class="admin-form">
             <div class="form-group">
-              <label for="adminSelectDesk">Seleccionar Estación</label>
+              <label for="adminSelectDesk">Seleccionar Estación / NPC</label>
               <select id="adminSelectDesk"></select>
             </div>
             <div class="form-group">
-              <label for="adminDeskTitle">Título de la Estación</label>
+              <label for="adminDeskTitle">Nombre y Cargo del NPC</label>
               <input type="text" id="adminDeskTitle" required>
             </div>
             <div class="form-group">
@@ -172,17 +174,17 @@
               <input type="text" id="adminDeskDept" required>
             </div>
             <div class="form-group">
-              <label for="adminDeskInfo">Información & Políticas</label>
+              <label for="adminDeskInfo">Diálogo de Inducción / Políticas</label>
               <textarea id="adminDeskInfo" rows="4" required></textarea>
             </div>
-            <button type="submit" class="btn-primary">Guardar Cambios en Vivo 💾</button>
+            <button type="submit" class="btn-primary">Guardar en Vivo 💾</button>
           </form>
         </div>
       </aside>
     </main>
   </div>
 
-  <!-- Modal Informativo de Puesto -->
+  <!-- Modal de Diálogo con el NPC / Estación -->
   <div id="deskModal" class="modal-overlay hidden">
     <div class="modal-card desk-card">
       <div class="desk-card-header">
@@ -190,18 +192,18 @@
         <h2 id="deskTitle">Puesto de Información</h2>
       </div>
       <div class="desk-card-body">
-        <p id="deskInfo">Información detallada...</p>
+        <p id="deskInfo">Diálogo detallado del NPC...</p>
       </div>
       <div class="desk-card-footer">
-        <button id="deskCloseBtn" class="btn-primary">¡Entendido! Completar paso ✔️</button>
+        <button id="deskCloseBtn" class="btn-primary">¡Muchas gracias! Misión completada ✔️</button>
       </div>
     </div>
   </div>
 
-  <!-- Contenedor oculto para audio de otros jugadores -->
+  <!-- Contenedor oculto de audio para WebRTC -->
   <div id="audioStreamsContainer" style="display: none;"></div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="game.js"></script>
+  <script src="game3d.js"></script>
 </body>
 </html>

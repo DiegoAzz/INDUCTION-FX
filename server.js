@@ -21,51 +21,51 @@ const players = {};
 let officeDesks = [
   {
     id: 'desk-rrhh',
-    title: 'Recursos Humanos',
+    name: 'Sofía Valenzuela',
+    title: 'Sofía Valenzuela',
+    role: 'Líder de Recursos Humanos (RRHH)',
     department: 'Talento & Cultura',
-    x: 140,
-    y: 130,
-    width: 100,
-    height: 70,
+    x: -20,
+    z: -12,
     color: '#8B5CF6',
     icon: '🤝',
-    info: '¡Bienvenido al equipo! Aquí gestionamos tus vacaciones, beneficios de salud y políticas laborales. Revisa el manual de convivencia corporativa y tu contrato de bienvenida.'
+    info: '¡Hola! Qué gusto tenerte en el equipo. Yo gestiono tus vacaciones, seguro médico corporativo y bienestar. Te dejé una copia del manual de convivencia en tu correo institucional.'
   },
   {
     id: 'desk-it',
-    title: 'TI & Ciberseguridad',
-    department: 'Tecnología',
-    x: 560,
-    y: 130,
-    width: 100,
-    height: 70,
+    name: 'Alex Rivera',
+    title: 'Alex Rivera',
+    role: 'Especialista en Ciberseguridad TI',
+    department: 'Tecnología & Soporte',
+    x: 20,
+    z: -12,
     color: '#06B6D4',
     icon: '🛡️',
-    info: 'Normativa de seguridad: 1) Activar 2FA en todas las cuentas corporativas. 2) Conectarse a la VPN antes de acceder a la base de datos interna. 3) Prohibido compartir credenciales.'
+    info: '¡Bienvenido! Regla #1 en la empresa: Todo dispositivo debe tener 2FA activo en 1Password y Google Suite. Nunca compartas credenciales ni entres a la VPN en redes Wi-Fi públicas sin cifrado.'
   },
   {
     id: 'desk-dev',
-    title: 'Ingeniería & Producto',
-    department: 'Desarrollo',
-    x: 140,
-    y: 420,
-    width: 100,
-    height: 70,
+    name: 'Carlos Mendoza',
+    title: 'Carlos Mendoza',
+    role: 'Principal Tech Lead',
+    department: 'Ingeniería de Software',
+    x: -20,
+    z: 18,
     color: '#3B82F6',
     icon: '💻',
-    info: 'Flujo de trabajo: Trabajamos con Scrum de sprints bisemanales. Daily Standup a las 9:30 AM vía Sala de Juntas. Ramas protegidas en GitHub; todo PR requiere aprobación de un Senior.'
+    info: '¡Qué bueno verte por aquí! Trabajamos con Sprints de 2 semanas. Tenemos Daily Standup a las 9:30 AM en la Sala de Juntas. Revisa nuestro repositorio para desplegar tu entorno local.'
   },
   {
     id: 'desk-cafe',
-    title: 'Cafetería & Networking',
-    department: 'Zona Social',
-    x: 560,
-    y: 420,
-    width: 100,
-    height: 70,
+    name: 'Valeria Gómez',
+    title: 'Valeria Gómez',
+    role: 'Head of People & Social',
+    department: 'Cafetería & Zona Lounge',
+    x: 20,
+    z: 18,
     color: '#F59E0B',
     icon: '☕',
-    info: 'Espacio para desconectar y conocer al resto del equipo. Los viernes a las 4:30 PM organizamos dinámicas de integración y juegos online.'
+    info: '¡Tómate un café o té! Este es nuestro espacio para descansar, recargar energía y charlar sin hablar de trabajo. Los viernes a las 4:30 PM jugamos partidas online todos juntos.'
   }
 ];
 
@@ -90,8 +90,10 @@ io.on('connection', (socket) => {
       name: data.name || 'Nuevo Empleado',
       role: data.role || 'Junior Onboarding',
       color: data.color || '#3B82F6',
-      x: 400 + (Math.random() * 30 - 15),
-      y: 320 + (Math.random() * 30 - 15),
+      x: (Math.random() * 6 - 3),
+      y: 0,
+      z: (Math.random() * 6 - 3),
+      rotationY: 0,
       facing: 'down',
       inMeetingRoom: false,
       isMuted: true,
@@ -108,19 +110,21 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('player:joined', players[socket.id]);
   });
 
-  // 2. Movimiento
+  // 2. Movimiento 3D
   socket.on('player:move', (pos) => {
     if (players[socket.id]) {
       players[socket.id].x = pos.x;
-      players[socket.id].y = pos.y;
-      players[socket.id].facing = pos.facing || players[socket.id].facing;
+      players[socket.id].y = pos.y || 0;
+      players[socket.id].z = pos.z || 0;
+      players[socket.id].rotationY = pos.rotationY || 0;
       players[socket.id].inMeetingRoom = pos.inMeetingRoom || false;
 
       socket.broadcast.emit('player:moved', {
         id: socket.id,
         x: pos.x,
         y: pos.y,
-        facing: players[socket.id].facing,
+        z: pos.z,
+        rotationY: pos.rotationY,
         inMeetingRoom: players[socket.id].inMeetingRoom
       });
     }
