@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Induction - Oficina Virtual Interactiva</title>
+  <title>Induction - Espacio Corporativo Interactivo</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Modal de Bienvenida / Creación de Avatar -->
+  <!-- Modal de Bienvenida / Ingreso -->
   <div id="joinModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <span class="badge">Induction 2026</span>
+        <span class="badge">Induction Enterprise</span>
         <h2>Bienvenido a tu Primer Día</h2>
-        <p>Configura tu avatar para ingresar a la oficina corporativa interactiva.</p>
+        <p>Configura tu avatar corporativo para comenzar tu recorrido de inducción.</p>
       </div>
 
       <form id="joinForm">
@@ -26,13 +26,14 @@
         </div>
 
         <div class="form-group">
-          <label for="playerRole">Tu Puesto o Departamento</label>
+          <label for="playerRole">Tu Departamento / Rol</label>
           <select id="playerRole">
             <option value="Nuevo Ingreso (Onboarding)">🌱 Nuevo Ingreso (Onboarding)</option>
             <option value="Ingeniería de Software">💻 Ingeniería de Software</option>
             <option value="Diseño de Producto">🎨 Diseño de Producto</option>
             <option value="Recursos Humanos">🤝 Recursos Humanos</option>
-            <option value="Operaciones & Soporte">⚡ Operaciones & Soporte</option>
+            <option value="Operaciones & IT">⚡ Operaciones & IT</option>
+            <option value="Director / Manager">👔 Director / Manager</option>
           </select>
         </div>
 
@@ -67,21 +68,28 @@
     </div>
   </div>
 
-  <!-- HUD Principal del Juego -->
+  <!-- HUD Principal -->
   <div id="gameContainer" class="game-container hidden">
-    <!-- Barra Superior -->
+    <!-- Header -->
     <header class="game-header">
       <div class="office-brand">
         <div class="status-indicator"></div>
         <div>
           <h1 class="brand-title">Induction HQ</h1>
-          <p class="brand-sub">Oficina Principal • Modo Multijugador en Vivo</p>
+          <p class="brand-sub">Sede Virtual Corporativa • Audio Espacial & Presencia</p>
         </div>
       </div>
 
-      <div class="controls-hint">
-        <span>🎮 Usa <strong>W, A, S, D</strong> o <strong>Flechas</strong> para caminar</span>
-        <span>💡 Presiona <strong>[ E ]</strong> para interactuar con los puestos</span>
+      <!-- Barra de herramientas de Audio / Micrófono -->
+      <div class="voice-controls">
+        <button id="toggleMicBtn" class="btn-voice" title="Activar/Silenciar Micrófono">
+          <span id="micIcon">🎤</span>
+          <span id="micText">Voz Desactivada</span>
+        </button>
+        <div class="voice-badge">
+          <span class="radar-dot"></span>
+          Audio Espacial Activo (180px)
+        </div>
       </div>
 
       <div class="online-pill">
@@ -89,80 +97,92 @@
       </div>
     </header>
 
-    <!-- Área de Juego (Canvas + Overlay UI) -->
+    <!-- Área de Juego -->
     <main class="game-main">
       <div class="canvas-wrapper">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-        <!-- Indicador de acción interactiva flotante -->
+        <!-- Prompt de interacción flotante -->
         <div id="interactionPrompt" class="interaction-prompt hidden">
-          Presiona <kbd>E</kbd> para consultar información del puesto
+          Presiona <kbd>E</kbd> para consultar la estación
+        </div>
+
+        <!-- Alerta de Sala de Juntas -->
+        <div id="meetingAlert" class="meeting-alert hidden">
+          🔒 Estás dentro de la <strong>Sala de Juntas</strong> (Audio y Chat Aislados)
         </div>
       </div>
 
-      <!-- Barra Lateral: Chat & Objetivos de Inducción -->
+      <!-- Barra Lateral -->
       <aside class="sidebar">
         <!-- Pestañas -->
         <div class="sidebar-tabs">
-          <button class="tab-btn active" id="tabChatBtn">💬 Chat en Vivo</button>
-          <button class="tab-btn" id="tabTasksBtn">📋 Misiones de Inducción</button>
+          <button class="tab-btn active" id="tabChatBtn">💬 Chat</button>
+          <button class="tab-btn" id="tabTasksBtn">📋 Inducción</button>
+          <button class="tab-btn" id="tabAdminBtn">⚙️ Admin RRHH</button>
         </div>
 
-        <!-- Vista de Chat -->
+        <!-- 1. Chat View -->
         <div id="chatView" class="tab-content active">
           <div class="proximity-banner">
             <span class="icon">📡</span>
-            <small>Los mensajes con borde verde provienen de compañeros cercanos a ti.</small>
+            <small>Mensajes en verde: compañeros dentro de tu radio de voz.</small>
           </div>
           <div id="chatMessages" class="chat-messages"></div>
           <form id="chatForm" class="chat-input-bar">
-            <input type="text" id="chatInput" placeholder="Escribe un mensaje a la oficina..." autocomplete="off">
+            <input type="text" id="chatInput" placeholder="Escribe un mensaje o saluda..." autocomplete="off">
             <button type="submit">Enviar</button>
           </form>
         </div>
 
-        <!-- Vista de Misiones de Inducción -->
+        <!-- 2. Onboarding Tasks View -->
         <div id="tasksView" class="tab-content">
           <div class="checklist-header">
-            <h3>Checklist de Inducción</h3>
-            <p>Visita cada estación de la empresa para completar tu primer día.</p>
+            <div class="progress-wrap">
+              <div class="progress-info">
+                <span>Progreso de Inducción</span>
+                <strong id="progressPercent">0%</strong>
+              </div>
+              <div class="progress-bar-bg">
+                <div id="progressBarFill" class="progress-bar-fill" style="width: 0%"></div>
+              </div>
+            </div>
+            <p>Visita cada puesto y presiona <strong>[E]</strong> para completar tu onboarding.</p>
           </div>
-          <ul class="task-list" id="taskList">
-            <li class="task-item" data-desk="desk-rrhh">
-              <span class="check-box">⬜</span>
-              <div>
-                <strong>Visita Recursos Humanos</strong>
-                <p>Conoce los beneficios y normas generales.</p>
-              </div>
-            </li>
-            <li class="task-item" data-desk="desk-it">
-              <span class="check-box">⬜</span>
-              <div>
-                <strong>Puesto de TI & Ciberseguridad</strong>
-                <p>Infórmate sobre accesos seguros y 2FA.</p>
-              </div>
-            </li>
-            <li class="task-item" data-desk="desk-dev">
-              <span class="check-box">⬜</span>
-              <div>
-                <strong>Estación de Ingeniería / Devs</strong>
-                <p>Conoce el flujo técnico y las reuniones diarias.</p>
-              </div>
-            </li>
-            <li class="task-item" data-desk="desk-cafe">
-              <span class="check-box">⬜</span>
-              <div>
-                <strong>Toma un café en la Zona Lounge</strong>
-                <p>Descubre los eventos sociales de los viernes.</p>
-              </div>
-            </li>
-          </ul>
+          <ul class="task-list" id="taskList"></ul>
+        </div>
+
+        <!-- 3. Admin Panel View -->
+        <div id="adminView" class="tab-content">
+          <div class="admin-header">
+            <h3>Gestor de Estaciones Corporativas</h3>
+            <p>Personaliza en tiempo real los mensajes que ven los nuevos empleados.</p>
+          </div>
+          <form id="adminEditForm" class="admin-form">
+            <div class="form-group">
+              <label for="adminSelectDesk">Seleccionar Estación</label>
+              <select id="adminSelectDesk"></select>
+            </div>
+            <div class="form-group">
+              <label for="adminDeskTitle">Título de la Estación</label>
+              <input type="text" id="adminDeskTitle" required>
+            </div>
+            <div class="form-group">
+              <label for="adminDeskDept">Departamento</label>
+              <input type="text" id="adminDeskDept" required>
+            </div>
+            <div class="form-group">
+              <label for="adminDeskInfo">Información & Políticas</label>
+              <textarea id="adminDeskInfo" rows="4" required></textarea>
+            </div>
+            <button type="submit" class="btn-primary">Guardar Cambios en Vivo 💾</button>
+          </form>
         </div>
       </aside>
     </main>
   </div>
 
-  <!-- Modal de Información del Puesto / Departamento -->
+  <!-- Modal Informativo de Puesto -->
   <div id="deskModal" class="modal-overlay hidden">
     <div class="modal-card desk-card">
       <div class="desk-card-header">
@@ -173,12 +193,14 @@
         <p id="deskInfo">Información detallada...</p>
       </div>
       <div class="desk-card-footer">
-        <button id="deskCloseBtn" class="btn-primary">Entendido ✔️</button>
+        <button id="deskCloseBtn" class="btn-primary">¡Entendido! Completar paso ✔️</button>
       </div>
     </div>
   </div>
 
-  <!-- Socket.io y lógica del juego -->
+  <!-- Contenedor oculto para audio de otros jugadores -->
+  <div id="audioStreamsContainer" style="display: none;"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="game.js"></script>
 </body>

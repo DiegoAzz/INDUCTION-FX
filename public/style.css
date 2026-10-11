@@ -1,13 +1,13 @@
 :root {
-  --bg-dark: #0f172a;
-  --bg-card: #1e293b;
-  --bg-surface: #334155;
+  --bg-dark: #090d16;
+  --bg-card: #131b2e;
+  --bg-surface: #1e293b;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --primary: #3b82f6;
   --primary-hover: #2563eb;
   --accent: #10b981;
-  --border: #334155;
+  --border: #232f48;
 }
 
 * {
@@ -30,7 +30,7 @@ body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(9, 13, 22, 0.88);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -50,7 +50,7 @@ body {
   padding: 32px;
   max-width: 460px;
   width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal-header {
@@ -62,7 +62,7 @@ body {
   background: rgba(59, 130, 246, 0.15);
   color: var(--primary);
   border: 1px solid rgba(59, 130, 246, 0.3);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -84,7 +84,7 @@ body {
 
 /* Formularios */
 .form-group {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .form-group label {
@@ -96,9 +96,10 @@ body {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
-  padding: 12px 14px;
+  padding: 11px 13px;
   border-radius: 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -109,7 +110,8 @@ body {
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   border-color: var(--primary);
 }
 
@@ -128,8 +130,8 @@ body {
 
 .color-swatch span {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: var(--c);
   border: 2px solid transparent;
@@ -139,18 +141,18 @@ body {
 .color-swatch input:checked + span {
   border-color: #fff;
   transform: scale(1.15);
-  box-shadow: 0 0 12px var(--c);
+  box-shadow: 0 0 10px var(--c);
 }
 
 .btn-primary {
   width: 100%;
-  padding: 14px;
+  padding: 13px;
   background: var(--primary);
   border: none;
   border-radius: 8px;
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
 }
@@ -163,7 +165,7 @@ body {
   transform: scale(0.98);
 }
 
-/* Juego y Layout */
+/* Header & Voice Controls */
 .game-container {
   display: flex;
   flex-direction: column;
@@ -199,7 +201,7 @@ body {
 }
 
 .brand-title {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -208,15 +210,47 @@ body {
   color: var(--text-muted);
 }
 
-.controls-hint {
+.voice-controls {
   display: flex;
-  gap: 16px;
+  align-items: center;
+  gap: 14px;
+}
+
+.btn-voice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #334155;
+  border: 1px solid #475569;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-voice.active {
+  background: #10b981;
+  border-color: #059669;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.voice-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
-.controls-hint strong {
-  color: #fff;
+.radar-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
 }
 
 .online-pill {
@@ -227,6 +261,7 @@ body {
   font-weight: 600;
 }
 
+/* Área de Juego */
 .game-main {
   flex: 1;
   display: flex;
@@ -235,7 +270,7 @@ body {
 
 .canvas-wrapper {
   flex: 1;
-  background: #020617;
+  background: #060911;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,23 +278,23 @@ body {
 }
 
 #gameCanvas {
-  background: #1e293b;
+  background: #0f172a;
   border: 2px solid var(--border);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
 .interaction-prompt {
   position: absolute;
   bottom: 24px;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid var(--primary);
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
   animation: pulse 1.5s infinite;
 }
 
@@ -274,9 +309,25 @@ body {
   font-weight: 700;
 }
 
+.meeting-alert {
+  position: absolute;
+  top: 24px;
+  background: rgba(236, 72, 153, 0.15);
+  border: 1px solid #ec4899;
+  color: #f472b6;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  backdrop-filter: blur(6px);
+}
+
+.meeting-alert.hidden {
+  display: none;
+}
+
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.85; }
 }
 
 /* Sidebar */
@@ -297,10 +348,10 @@ body {
   flex: 1;
   background: none;
   border: none;
-  padding: 14px;
+  padding: 14px 8px;
   color: var(--text-muted);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -308,7 +359,7 @@ body {
 .tab-btn.active {
   color: var(--primary);
   border-bottom: 2px solid var(--primary);
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(59, 130, 246, 0.06);
 }
 
 .tab-content {
@@ -322,10 +373,11 @@ body {
   display: flex;
 }
 
+/* Chat */
 .proximity-banner {
   background: rgba(16, 185, 129, 0.1);
   border-bottom: 1px solid rgba(16, 185, 129, 0.2);
-  padding: 8px 14px;
+  padding: 8px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -353,6 +405,11 @@ body {
 .chat-msg.near {
   border-left-color: var(--accent);
   background: rgba(16, 185, 129, 0.08);
+}
+
+.chat-msg.meeting {
+  border-left-color: #ec4899;
+  background: rgba(236, 72, 153, 0.08);
 }
 
 .chat-msg-header {
@@ -385,10 +442,6 @@ body {
   outline: none;
 }
 
-.chat-input-bar input:focus {
-  border-color: var(--primary);
-}
-
 .chat-input-bar button {
   background: var(--primary);
   color: #fff;
@@ -399,15 +452,40 @@ body {
   cursor: pointer;
 }
 
-/* Checklist de Misiones */
+/* Tasks / Onboarding Checklist */
 .checklist-header {
   padding: 16px;
   border-bottom: 1px solid var(--border);
 }
 
-.checklist-header h3 {
-  font-size: 15px;
-  margin-bottom: 4px;
+.progress-wrap {
+  margin-bottom: 12px;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.progress-info strong {
+  color: var(--accent);
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.3s ease;
 }
 
 .checklist-header p {
@@ -421,6 +499,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
 }
 
 .task-item {
@@ -450,9 +529,33 @@ body {
   margin-top: 2px;
 }
 
+/* Admin Form */
+.admin-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-header h3 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.admin-header p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.admin-form {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 /* Modal de Información del Puesto */
 .desk-card {
-  max-width: 500px;
+  max-width: 520px;
 }
 
 .desk-card-body {
@@ -460,7 +563,7 @@ body {
   font-size: 15px;
   line-height: 1.6;
   color: #cbd5e1;
-  background: rgba(15, 23, 42, 0.5);
+  background: rgba(9, 13, 22, 0.6);
   padding: 16px;
   border-radius: 8px;
   border-left: 3px solid var(--primary);
