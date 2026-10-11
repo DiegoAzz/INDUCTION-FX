@@ -1,13 +1,13 @@
 :root {
-  --bg-dark: #090d16;
-  --bg-card: #131b2e;
-  --bg-surface: #1e293b;
+  --bg-dark: #080d1a;
+  --bg-card: #111a2e;
+  --bg-surface: #1b2640;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --primary: #3b82f6;
   --primary-hover: #2563eb;
   --accent: #10b981;
-  --border: #232f48;
+  --border: #233354;
 }
 
 * {
@@ -26,12 +26,12 @@ body {
   overflow: hidden;
 }
 
-/* Modales */
+/* Modal Overlay & Card */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(9, 13, 22, 0.88);
-  backdrop-filter: blur(8px);
+  background: rgba(8, 13, 26, 0.88);
+  backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -40,21 +40,25 @@ body {
 }
 
 .modal-overlay.hidden {
-  display: none;
+  display: none !important;
 }
 
 .modal-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 32px;
-  max-width: 460px;
+  max-width: 480px;
   width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
 }
 
-.modal-header {
-  margin-bottom: 24px;
+.auth-card {
+  max-width: 520px;
+}
+
+.auth-header {
+  margin-bottom: 20px;
 }
 
 .badge {
@@ -68,18 +72,51 @@ body {
   letter-spacing: 0.05em;
   padding: 4px 10px;
   border-radius: 20px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.modal-header h2 {
+.auth-header h2 {
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 6px;
 }
 
-.modal-header p {
+.auth-header p {
   color: var(--text-muted);
   font-size: 14px;
+}
+
+/* Tabs de Autenticación */
+.auth-tabs {
+  display: flex;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.auth-form-content.hidden {
+  display: none;
 }
 
 /* Formularios */
@@ -99,7 +136,7 @@ body {
 .form-group select,
 .form-group textarea {
   width: 100%;
-  padding: 11px 13px;
+  padding: 12px 14px;
   border-radius: 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
@@ -113,6 +150,19 @@ body {
 .form-group select:focus,
 .form-group textarea:focus {
   border-color: var(--primary);
+}
+
+.b2b-features-hint {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 12px;
+  color: #34d399;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .color-picker {
@@ -165,7 +215,7 @@ body {
   transform: scale(0.98);
 }
 
-/* Header & Voice Controls */
+/* Header & HUD */
 .game-container {
   display: flex;
   flex-direction: column;
@@ -210,18 +260,28 @@ body {
   color: var(--text-muted);
 }
 
+.controls-hint {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.controls-hint strong {
+  color: #fff;
+}
+
 .voice-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
 }
 
 .btn-voice {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #334155;
-  border: 1px solid #475569;
+  background: #1e293b;
+  border: 1px solid #334155;
   color: #fff;
   padding: 8px 16px;
   border-radius: 20px;
@@ -237,20 +297,10 @@ body {
   box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
 }
 
-.voice-badge {
+.header-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.radar-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--primary);
-  border-radius: 50%;
-  animation: pulse 1.5s infinite;
+  gap: 12px;
 }
 
 .online-pill {
@@ -261,7 +311,24 @@ body {
   font-weight: 600;
 }
 
-/* Área de Juego */
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+/* Área 3D */
 .game-main {
   flex: 1;
   display: flex;
@@ -287,19 +354,19 @@ body {
 .interaction-prompt {
   position: absolute;
   bottom: 24px;
-  background: rgba(15, 23, 42, 0.95);
+  background: rgba(17, 26, 46, 0.95);
   border: 1px solid var(--primary);
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
   animation: pulse 1.5s infinite;
 }
 
 .interaction-prompt.hidden {
-  display: none;
+  display: none !important;
 }
 
 .interaction-prompt kbd {
@@ -327,7 +394,7 @@ body {
 
 @keyframes pulse {
   0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.06); opacity: 0.85; }
+  50% { transform: scale(1.05); opacity: 0.85; }
 }
 
 /* Sidebar */
@@ -452,7 +519,7 @@ body {
   cursor: pointer;
 }
 
-/* Tasks / Onboarding Checklist */
+/* Tasks & Onboarding */
 .checklist-header {
   padding: 16px;
   border-bottom: 1px solid var(--border);
@@ -553,18 +620,64 @@ body {
   gap: 12px;
 }
 
-/* Modal de Información del Puesto */
-.desk-card {
-  max-width: 520px;
+/* MODAL DE DIÁLOGO NPC CON CARA REAL */
+.npc-dialog-card {
+  max-width: 540px;
 }
 
-.desk-card-body {
-  margin: 20px 0;
+.npc-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.npc-avatar-wrapper {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+}
+
+.npc-avatar-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--primary);
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+}
+
+.online-dot {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border: 2px solid var(--bg-card);
+  border-radius: 50%;
+}
+
+.npc-details h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 4px 0 2px 0;
+}
+
+.npc-role-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.npc-speech-bubble {
+  background: rgba(8, 13, 26, 0.7);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  padding: 18px;
+  border-radius: 12px;
+  margin-bottom: 22px;
   font-size: 15px;
   line-height: 1.6;
-  color: #cbd5e1;
-  background: rgba(9, 13, 22, 0.6);
-  padding: 16px;
-  border-radius: 8px;
-  border-left: 3px solid var(--primary);
+  color: #e2e8f0;
 }

@@ -1,22 +1,35 @@
-// Induction 3D - Three.js Corporate Engine & NPCs
+// Induction 3D Enterprise - Client Core
 const socket = io();
 
-// Elementos DOM
-const joinModal = document.getElementById('joinModal');
-const joinForm = document.getElementById('joinForm');
+// DOM Elements
+const authModal = document.getElementById('authModal');
+const tabLoginBtn = document.getElementById('tabLoginBtn');
+const tabRegisterCompanyBtn = document.getElementById('tabRegisterCompanyBtn');
+const employeeLoginForm = document.getElementById('employeeLoginForm');
+const newCompanyForm = document.getElementById('newCompanyForm');
+const companySelect = document.getElementById('companySelect');
+
 const gameContainer = document.getElementById('gameContainer');
 const canvasContainer = document.getElementById('canvas3dContainer');
 const playerCountEl = document.getElementById('playerCount');
+const displayCompanyName = document.getElementById('displayCompanyName');
+const displayEmployeeName = document.getElementById('displayEmployeeName');
+const logoutBtn = document.getElementById('logoutBtn');
+
 const interactionPrompt = document.getElementById('interactionPrompt');
 const promptTargetName = document.getElementById('promptTargetName');
 const meetingAlert = document.getElementById('meetingAlert');
 
-const deskModal = document.getElementById('deskModal');
-const deskTitle = document.getElementById('deskTitle');
-const deskDeptBadge = document.getElementById('deskDeptBadge');
-const deskInfo = document.getElementById('deskInfo');
-const deskCloseBtn = document.getElementById('deskCloseBtn');
+// Modal NPC
+const npcModal = document.getElementById('npcModal');
+const npcAvatarImg = document.getElementById('npcAvatarImg');
+const npcDeptBadge = document.getElementById('npcDeptBadge');
+const npcNameTitle = document.getElementById('npcNameTitle');
+const npcRoleSubtitle = document.getElementById('npcRoleSubtitle');
+const npcDialogueText = document.getElementById('npcDialogueText');
+const npcCloseBtn = document.getElementById('npcCloseBtn');
 
+// Sidebar Tabs
 const tabChatBtn = document.getElementById('tabChatBtn');
 const tabTasksBtn = document.getElementById('tabTasksBtn');
 const tabAdminBtn = document.getElementById('tabAdminBtn');
@@ -32,10 +45,10 @@ const taskList = document.getElementById('taskList');
 const progressPercent = document.getElementById('progressPercent');
 const progressBarFill = document.getElementById('progressBarFill');
 
-const adminSelectDesk = document.getElementById('adminSelectDesk');
-const adminDeskTitle = document.getElementById('adminDeskTitle');
-const adminDeskDept = document.getElementById('adminDeskDept');
-const adminDeskInfo = document.getElementById('adminDeskInfo');
+const adminSelectNpc = document.getElementById('adminSelectNpc');
+const adminNpcName = document.getElementById('adminNpcName');
+const adminNpcDept = document.getElementById('adminNpcDept');
+const adminNpcInfo = document.getElementById('adminNpcInfo');
 const adminEditForm = document.getElementById('adminEditForm');
 
 const toggleMicBtn = document.getElementById('toggleMicBtn');
@@ -43,12 +56,13 @@ const micIcon = document.getElementById('micIcon');
 const micText = document.getElementById('micText');
 const audioStreamsContainer = document.getElementById('audioStreamsContainer');
 
-// Estado
+// State
 let selfId = null;
+let currentCompany = null;
 let players = {};
-let officeDesks = [];
+let officeNpcs = [];
 let nearbyTarget = null;
-const visitedDesks = new Set();
+const visitedNPCs = new Set();
 
 // WebRTC State
 let localStream = null;
@@ -56,7 +70,7 @@ let isMuted = true;
 const peerConnections = {};
 const peerAudioElements = {};
 
-// Teclado WASD y Flechas con redundancia total de teclas
+// Teclas WASD & Flechas
 const keysPressed = {
   forward: false,
   backward: false,
@@ -68,8 +82,8 @@ const keysPressed = {
 // THREE.JS SETUP
 // ----------------------------------------------------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0f1d);
-scene.fog = new THREE.Fog(0x0a0f1d, 35, 90);
+scene.background = new THREE.Color(0x080d1a);
+scene.fog = new THREE.Fog(0x080d1a, 35, 95);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 1000);
 camera.position.set(0, 18, 22);
@@ -80,12 +94,11 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 canvasContainer.appendChild(renderer.domElement);
 
-// Luces
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(20, 40, 20);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+dirLight.position.set(20, 45, 20);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
@@ -97,40 +110,29 @@ dirLight.shadow.camera.top = 40;
 dirLight.shadow.camera.bottom = -40;
 scene.add(dirLight);
 
-// Luz de acento en sala de juntas
-const boardPointLight = new THREE.PointLight(0xec4899, 1.5, 25);
+const boardPointLight = new THREE.PointLight(0xec4899, 1.8, 28);
 boardPointLight.position.set(0, 8, -20);
 scene.add(boardPointLight);
 
 // ----------------------------------------------------
-// CONSTRUCCIÓN DEL MUNDO 3D (Oficinas, Paredes y Suelos)
+// ENTORNO 3D DE LA OFICINA
 // ----------------------------------------------------
-
-// Suelo Principal
 const floorGeo = new THREE.PlaneGeometry(80, 80);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x172136, roughness: 0.8 });
 const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Cuadrícula decorativa sobre el suelo
-const gridHelper = new THREE.GridHelper(80, 40, 0x334155, 0x1e293b);
+const gridHelper = new THREE.GridHelper(80, 40, 0x223252, 0x172136);
 gridHelper.position.y = 0.01;
 scene.add(gridHelper);
 
-// Materiales de Paredes y Vidrio
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 });
-const glassMat = new THREE.MeshStandardMaterial({ 
-  color: 0x38bdf8, 
-  transparent: true, 
-  opacity: 0.35, 
-  roughness: 0.1 
-});
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x243454, roughness: 0.6 });
+const glassMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.35, roughness: 0.1 });
 
-function createWall(x, z, width, depth, height = 5, isGlass = false) {
-  const geo = new THREE.BoxGeometry(width, height, depth);
-  const mesh = new THREE.Mesh(geo, isGlass ? glassMat : wallMat);
+function createWall(x, z, width, depth, height = 5.5, isGlass = false) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), isGlass ? glassMat : wallMat);
   mesh.position.set(x, height / 2, z);
   mesh.castShadow = !isGlass;
   mesh.receiveShadow = true;
@@ -138,264 +140,200 @@ function createWall(x, z, width, depth, height = 5, isGlass = false) {
   return mesh;
 }
 
-// Paredes Perimetrales de la Empresa
-createWall(0, -35, 70, 1.5, 6); // Pared Norte
-createWall(0, 35, 70, 1.5, 6);  // Pared Sur
-createWall(-35, 0, 1.5, 70, 6); // Pared Oeste
-createWall(35, 0, 1.5, 70, 6);  // Pared Este
+// Paredes exteriores
+createWall(0, -35, 70, 1.5, 6);
+createWall(0, 35, 70, 1.5, 6);
+createWall(-35, 0, 1.5, 70, 6);
+createWall(35, 0, 1.5, 70, 6);
 
-// Sala de Juntas Ejecutiva (Norte Central)
-createWall(-12, -22, 1, 24, 5, true); // Vidrio oeste
-createWall(12, -22, 1, 24, 5, true);  // Vidrio este
-createWall(-7, -10, 9, 1, 5, true);   // Vidrio sur izq
-createWall(7, -10, 9, 1, 5, true);    // Vidrio sur der (puerta en el centro)
+// Sala de Juntas Ejecutiva (Norte)
+createWall(-12, -22, 1, 24, 5, true);
+createWall(12, -22, 1, 24, 5, true);
+createWall(-7, -10, 9, 1, 5, true);
+createWall(7, -10, 9, 1, 5, true);
 
-// Alfombra de la Sala de Juntas
-const boardCarpetGeo = new THREE.PlaneGeometry(22, 22);
-const boardCarpetMat = new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.7 });
-const boardCarpet = new THREE.Mesh(boardCarpetGeo, boardCarpetMat);
+const boardCarpet = new THREE.Mesh(
+  new THREE.PlaneGeometry(22, 22),
+  new THREE.MeshStandardMaterial({ color: 0x831843, roughness: 0.7 })
+);
 boardCarpet.rotation.x = -Math.PI / 2;
 boardCarpet.position.set(0, 0.02, -22);
 boardCarpet.receiveShadow = true;
 scene.add(boardCarpet);
 
-// Mesa Ejecutiva Ovalada
-const tableGeo = new THREE.CylinderGeometry(5.5, 5.5, 1.2, 32);
-const tableMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
-const boardTable = new THREE.Mesh(tableGeo, tableMat);
+const boardTable = new THREE.Mesh(
+  new THREE.CylinderGeometry(5.5, 5.5, 1.2, 32),
+  new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 })
+);
 boardTable.position.set(0, 1.2, -22);
 boardTable.castShadow = true;
-boardTable.receiveShadow = true;
 scene.add(boardTable);
 
-// Divisiones de Oficinas (Paredes interiores)
-createWall(-20, 5, 28, 1, 4); // División Oficina RRHH / Dev
-createWall(20, 5, 28, 1, 4);  // División Oficina TI / Cafetería
+// Divisiones de Oficinas
+createWall(-20, 5, 28, 1, 4);
+createWall(20, 5, 28, 1, 4);
 
-// Decoraciones 3D: Plantas Corporativas
+// Plantas
 function createOfficePlant(x, z) {
   const group = new THREE.Group();
-  // Maceta
-  const potGeo = new THREE.CylinderGeometry(0.8, 0.6, 1.4, 16);
-  const potMat = new THREE.MeshStandardMaterial({ color: 0xb45309 });
-  const pot = new THREE.Mesh(potGeo, potMat);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.6, 1.4, 16), new THREE.MeshStandardMaterial({ color: 0xb45309 }));
   pot.position.y = 0.7;
-  pot.castShadow = true;
   group.add(pot);
 
-  // Hojas
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.4 });
   for (let i = 0; i < 4; i++) {
-    const leafGeo = new THREE.SphereGeometry(0.9, 8, 8);
-    const leaf = new THREE.Mesh(leafGeo, leafMat);
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.9, 8, 8), leafMat);
     leaf.scale.set(1, 1.8, 0.6);
     leaf.position.set(Math.sin(i * 1.5) * 0.4, 2 + i * 0.3, Math.cos(i * 1.5) * 0.4);
     leaf.rotation.y = i * 0.8;
-    leaf.castShadow = true;
     group.add(leaf);
   }
   group.position.set(x, 0, z);
   scene.add(group);
 }
-
 createOfficePlant(-32, -32);
 createOfficePlant(32, -32);
 createOfficePlant(-32, 32);
 createOfficePlant(32, 32);
-createOfficePlant(-14, -8);
-createOfficePlant(14, -8);
 
 // ----------------------------------------------------
-// NPCS & ESTACIONES CORPORATIVAS 3D
+// NPCS 3D CON CARAS REALES Y TEXTURAS
 // ----------------------------------------------------
-const npcs = [
-  {
-    id: 'desk-rrhh',
-    name: 'Sofía Valenzuela',
-    role: 'Líder de Recursos Humanos (RRHH)',
-    department: 'Talento & Cultura',
-    x: -20,
-    z: -12,
-    color: 0x8b5cf6,
-    icon: '🤝',
-    info: '¡Hola! Qué gusto tenerte en el equipo. Yo gestiono tus vacaciones, seguro médico corporativo y bienestar. Te dejé una copia del manual de convivencia en tu correo institucional.'
-  },
-  {
-    id: 'desk-it',
-    name: 'Alex Rivera',
-    role: 'Especialista en Ciberseguridad TI',
-    department: 'Tecnología & Soporte',
-    x: 20,
-    z: -12,
-    color: 0x06b6d4,
-    icon: '🛡️',
-    info: '¡Bienvenido! Regla #1 en la empresa: Todo dispositivo debe tener 2FA activo en 1Password y Google Suite. Nunca compartas credenciales ni entres a la VPN en redes Wi-Fi públicas sin cifrado.'
-  },
-  {
-    id: 'desk-dev',
-    name: 'Carlos Mendoza',
-    role: 'Principal Tech Lead',
-    department: 'Ingeniería de Software',
-    x: -20,
-    z: 18,
-    color: 0x3b82f6,
-    icon: '💻',
-    info: '¡Qué bueno verte por aquí! Trabajamos con Sprints de 2 semanas. Tenemos Daily Standup a las 9:30 AM en la Sala de Juntas. Revisa nuestro repositorio para desplegar tu entorno local.'
-  },
-  {
-    id: 'desk-cafe',
-    name: 'Valeria Gómez',
-    role: 'Head of People & Social',
-    department: 'Cafetería & Zona Lounge',
-    x: 20,
-    z: 18,
-    color: 0xf59e0b,
-    icon: '☕',
-    info: '¡Tómate un café o té! Este es nuestro espacio para descansar, recargar energía y charlar sin hablar de trabajo. Los viernes a las 4:30 PM jugamos partidas online todos juntos.'
-  }
-];
+const textureLoader = new THREE.TextureLoader();
+let npcMeshes = [];
 
-// Generar escritorios, laptops y modelos de NPCs en 3D
-const npcMeshes = [];
+function buildNpcWorld(npcs) {
+  // Limpiar NPCs previos si existen
+  npcMeshes.forEach(item => scene.remove(item.mesh));
+  npcMeshes = [];
+  officeNpcs = npcs;
 
-npcs.forEach(npc => {
-  const stationGroup = new THREE.Group();
+  npcs.forEach(npc => {
+    const stationGroup = new THREE.Group();
 
-  // Alfombra
-  const carpetGeo = new THREE.PlaneGeometry(10, 8);
-  const carpetMat = new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.8 });
-  const carpet = new THREE.Mesh(carpetGeo, carpetMat);
-  carpet.rotation.x = -Math.PI / 2;
-  carpet.position.y = 0.015;
-  carpet.receiveShadow = true;
-  stationGroup.add(carpet);
+    // Alfombra de color
+    const carpet = new THREE.Mesh(
+      new THREE.PlaneGeometry(10, 8),
+      new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.8 })
+    );
+    carpet.rotation.x = -Math.PI / 2;
+    carpet.position.y = 0.015;
+    carpet.receiveShadow = true;
+    stationGroup.add(carpet);
 
-  // Escritorio 3D
-  const deskGeo = new THREE.BoxGeometry(6, 1.6, 2.8);
-  const deskMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
-  const desk = new THREE.Mesh(deskGeo, deskMat);
-  desk.position.set(0, 0.8, 0);
-  desk.castShadow = true;
-  desk.receiveShadow = true;
-  stationGroup.add(desk);
+    // Escritorio
+    const desk = new THREE.Mesh(
+      new THREE.BoxGeometry(6, 1.6, 2.8),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 })
+    );
+    desk.position.set(0, 0.8, 0);
+    desk.castShadow = true;
+    stationGroup.add(desk);
 
-  // Laptop 3D con pantalla encendida
-  const laptopBase = new THREE.Mesh(
-    new THREE.BoxGeometry(1.4, 0.08, 1.0),
-    new THREE.MeshStandardMaterial({ color: 0x0f172a })
-  );
-  laptopBase.position.set(0, 1.64, 0);
-  laptopBase.castShadow = true;
-  stationGroup.add(laptopBase);
+    // Laptop encendida
+    const laptopBase = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 0.08, 1.0),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a })
+    );
+    laptopBase.position.set(0, 1.64, 0);
+    stationGroup.add(laptopBase);
 
-  const screenGeo = new THREE.BoxGeometry(1.4, 0.9, 0.06);
-  const screenMat = new THREE.MeshStandardMaterial({ 
-    color: npc.color, 
-    emissive: npc.color, 
-    emissiveIntensity: 0.6 
+    const screen = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 0.9, 0.06),
+      new THREE.MeshStandardMaterial({ color: npc.color, emissive: npc.color, emissiveIntensity: 0.6 })
+    );
+    screen.position.set(0, 2.1, -0.45);
+    screen.rotation.x = -0.15;
+    stationGroup.add(screen);
+
+    // NPC Modelo
+    const npcGroup = new THREE.Group();
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.65, 0.8, 1.8, 16),
+      new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.4 })
+    );
+    body.position.y = 1.3;
+    body.castShadow = true;
+    npcGroup.add(body);
+
+    // Retrato / Cara Real flotante del NPC (Sprite o Disco 3D con foto)
+    if (npc.avatarUrl) {
+      const faceTexture = textureLoader.load(npc.avatarUrl);
+      const faceGeo = new THREE.CircleGeometry(0.7, 32);
+      const faceMat = new THREE.MeshBasicMaterial({ 
+        map: faceTexture, 
+        side: THREE.DoubleSide 
+      });
+      const faceMesh = new THREE.Mesh(faceGeo, faceMat);
+      faceMesh.position.set(0, 2.7, 0.1);
+      npcGroup.add(faceMesh);
+    } else {
+      const head = new THREE.Mesh(
+        new THREE.SphereGeometry(0.6, 16, 16),
+        new THREE.MeshStandardMaterial({ color: 0xffedd5 })
+      );
+      head.position.y = 2.6;
+      npcGroup.add(head);
+    }
+
+    npcGroup.position.set(0, 0, -1.8);
+    stationGroup.add(npcGroup);
+
+    stationGroup.position.set(npc.x, 0, npc.z);
+    scene.add(stationGroup);
+
+    npcMeshes.push({
+      npcData: npc,
+      mesh: stationGroup,
+      npcModel: npcGroup
+    });
   });
-  const screen = new THREE.Mesh(screenGeo, screenMat);
-  screen.position.set(0, 2.1, -0.45);
-  screen.rotation.x = -0.15;
-  stationGroup.add(screen);
-
-  // Modelo del NPC (Cuerpo 3D estilizado)
-  const npcGroup = new THREE.Group();
-  
-  // Cuerpo
-  const bodyGeo = new THREE.CylinderGeometry(0.65, 0.8, 1.8, 16);
-  const bodyMat = new THREE.MeshStandardMaterial({ color: npc.color, roughness: 0.4 });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 1.3;
-  body.castShadow = true;
-  npcGroup.add(body);
-
-  // Cabeza
-  const headGeo = new THREE.SphereGeometry(0.6, 16, 16);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffedd5 });
-  const head = new THREE.Mesh(headGeo, headMat);
-  head.position.y = 2.6;
-  head.castShadow = true;
-  npcGroup.add(head);
-
-  // Cabello / Peinado estilizado
-  const hairGeo = new THREE.SphereGeometry(0.63, 16, 16);
-  const hairMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-  const hair = new THREE.Mesh(hairGeo, hairMat);
-  hair.position.set(0, 2.8, -0.1);
-  hair.scale.set(1, 0.8, 1);
-  npcGroup.add(hair);
-
-  npcGroup.position.set(0, 0, -1.8); // Sentado detrás del escritorio
-  stationGroup.add(npcGroup);
-
-  stationGroup.position.set(npc.x, 0, npc.z);
-  scene.add(stationGroup);
-
-  npcMeshes.push({
-    npcData: npc,
-    mesh: stationGroup,
-    npcModel: npcGroup
-  });
-});
-
-officeDesks = npcs;
+}
 
 // ----------------------------------------------------
-// AVATARES 3D (Jugador Local y Multijugador)
+// AVATARES DE JUGADORES 3D
 // ----------------------------------------------------
-const playerMeshes = {}; // socketId -> THREE.Group
+const playerMeshes = {};
 
 function createAvatarMesh(colorHex, isSelf = false) {
   const group = new THREE.Group();
 
-  // Sombra falsa suave en suelo
-  const shadowGeo = new THREE.PlaneGeometry(1.6, 1.6);
-  const shadowMat = new THREE.MeshBasicMaterial({ 
-    color: 0x000000, 
-    transparent: true, 
-    opacity: 0.35 
-  });
-  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+  const shadow = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.6, 1.6),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35 })
+  );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.02;
   group.add(shadow);
 
-  // Cuerpo Cápsula / Cilindro
-  const bodyGeo = new THREE.CylinderGeometry(0.65, 0.8, 1.7, 16);
-  const bodyMat = new THREE.MeshStandardMaterial({ 
-    color: colorHex, 
-    roughness: 0.3,
-    metalness: 0.1
-  });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  const body = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.65, 0.8, 1.7, 16),
+    new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.3 })
+  );
   body.position.y = 1.3;
   body.castShadow = true;
   group.add(body);
 
-  // Cabeza
-  const headGeo = new THREE.SphereGeometry(0.58, 16, 16);
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xffe4e6 });
-  const head = new THREE.Mesh(headGeo, headMat);
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.58, 16, 16),
+    new THREE.MeshStandardMaterial({ color: 0xffe4e6 })
+  );
   head.position.y = 2.5;
   head.castShadow = true;
   group.add(head);
 
-  // Visor / Ojos
-  const visorGeo = new THREE.BoxGeometry(0.6, 0.2, 0.4);
-  const visorMat = new THREE.MeshStandardMaterial({ 
-    color: 0x0f172a, 
-    roughness: 0.2 
-  });
-  const visor = new THREE.Mesh(visorGeo, visorMat);
+  const visor = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 0.2, 0.4),
+    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2 })
+  );
   visor.position.set(0, 2.55, 0.42);
   group.add(visor);
 
-  // Aro de luz en el suelo si es el jugador local
   if (isSelf) {
-    const ringGeo = new THREE.RingGeometry(1.1, 1.3, 32);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(1.1, 1.35, 32),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+    );
     ring.rotation.x = -Math.PI / 2;
     ring.position.y = 0.03;
     group.add(ring);
@@ -405,39 +343,26 @@ function createAvatarMesh(colorHex, isSelf = false) {
 }
 
 // ----------------------------------------------------
-// CONTROLES WASD Y FLECHAS (INFALIBLES)
+// CONTROLES WASD Y FLECHAS INFALIBLES
 // ----------------------------------------------------
 window.addEventListener('keydown', (e) => {
-  // Ignorar movimiento si el usuario está escribiendo en el chat o en el formulario admin
   if (document.activeElement === chatInput || 
-      document.activeElement === adminDeskInfo || 
-      document.activeElement === adminDeskTitle) {
+      document.activeElement === adminNpcName || 
+      document.activeElement === adminNpcDept || 
+      document.activeElement === adminNpcInfo) {
     return;
   }
 
   const code = e.code;
   const key = e.key.toLowerCase();
 
-  // W / Flecha Arriba
-  if (code === 'KeyW' || key === 'w' || code === 'ArrowUp' || key === 'arrowup') {
-    keysPressed.forward = true;
-  }
-  // S / Flecha Abajo
-  if (code === 'KeyS' || key === 's' || code === 'ArrowDown' || key === 'arrowdown') {
-    keysPressed.backward = true;
-  }
-  // A / Flecha Izquierda
-  if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft' || key === 'arrowleft') {
-    keysPressed.left = true;
-  }
-  // D / Flecha Derecha
-  if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') {
-    keysPressed.right = true;
-  }
+  if (code === 'KeyW' || key === 'w' || code === 'ArrowUp' || key === 'arrowup') keysPressed.forward = true;
+  if (code === 'KeyS' || key === 's' || code === 'ArrowDown' || key === 'arrowdown') keysPressed.backward = true;
+  if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft' || key === 'arrowleft') keysPressed.left = true;
+  if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') keysPressed.right = true;
 
-  // Tecla 'E' para interactuar
-  if ((code === 'KeyE' || key === 'e') && nearbyTarget && deskModal.classList.contains('hidden')) {
-    openDeskModal(nearbyTarget);
+  if ((code === 'KeyE' || key === 'e') && nearbyTarget && npcModal.classList.contains('hidden')) {
+    openNpcModal(nearbyTarget);
   }
 });
 
@@ -445,21 +370,12 @@ window.addEventListener('keyup', (e) => {
   const code = e.code;
   const key = e.key.toLowerCase();
 
-  if (code === 'KeyW' || key === 'w' || code === 'ArrowUp' || key === 'arrowup') {
-    keysPressed.forward = false;
-  }
-  if (code === 'KeyS' || key === 's' || code === 'ArrowDown' || key === 'arrowdown') {
-    keysPressed.backward = false;
-  }
-  if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft' || key === 'arrowleft') {
-    keysPressed.left = false;
-  }
-  if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') {
-    keysPressed.right = false;
-  }
+  if (code === 'KeyW' || key === 'w' || code === 'ArrowUp' || key === 'arrowup') keysPressed.forward = false;
+  if (code === 'KeyS' || key === 's' || code === 'ArrowDown' || key === 'arrowdown') keysPressed.backward = false;
+  if (code === 'KeyA' || key === 'a' || code === 'ArrowLeft' || key === 'arrowleft') keysPressed.left = false;
+  if (code === 'KeyD' || key === 'd' || code === 'ArrowRight' || key === 'arrowright') keysPressed.right = false;
 });
 
-// Redimensionar Canvas 3D
 function handleResize() {
   const width = canvasContainer.clientWidth || 800;
   const height = canvasContainer.clientHeight || 600;
@@ -470,45 +386,133 @@ function handleResize() {
 window.addEventListener('resize', handleResize);
 
 // ----------------------------------------------------
-// UI TABS & LOGIN
+// GESTIÓN DE EMPRESAS Y PERSISTENCIA (LOCALSTORAGE)
 // ----------------------------------------------------
-function switchTab(activeBtn, activeView) {
-  [tabChatBtn, tabTasksBtn, tabAdminBtn].forEach(b => b.classList.remove('active'));
-  [chatView, tasksView, adminView].forEach(v => v.classList.remove('active'));
-  activeBtn.classList.add('active');
-  activeView.classList.add('active');
+
+// Cargar lista de empresas en el <select>
+async function loadCompanies() {
+  try {
+    const res = await fetch('/api/companies');
+    const companies = await res.json();
+    companySelect.innerHTML = '';
+    companies.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.name} (${c.id})`;
+      companySelect.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Error cargando empresas:', err);
+  }
 }
 
-tabChatBtn.addEventListener('click', () => switchTab(tabChatBtn, chatView));
-tabTasksBtn.addEventListener('click', () => switchTab(tabTasksBtn, tasksView));
-tabAdminBtn.addEventListener('click', () => {
-  switchTab(tabAdminBtn, adminView);
-  populateAdminForm();
+// Tabs de Login vs Registro Empresa
+tabLoginBtn.addEventListener('click', () => {
+  tabLoginBtn.classList.add('active');
+  tabRegisterCompanyBtn.classList.remove('active');
+  employeeLoginForm.classList.remove('hidden');
+  newCompanyForm.classList.add('hidden');
 });
 
-joinForm.addEventListener('submit', (e) => {
+tabRegisterCompanyBtn.addEventListener('click', () => {
+  tabRegisterCompanyBtn.classList.add('active');
+  tabLoginBtn.classList.remove('active');
+  newCompanyForm.classList.remove('hidden');
+  employeeLoginForm.classList.add('hidden');
+});
+
+// Registrar nueva Empresa B2B
+newCompanyForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const name = document.getElementById('newCompanyName').value.trim();
+  const adminEmail = document.getElementById('adminEmail').value.trim();
+
+  try {
+    const res = await fetch('/api/companies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, adminEmail })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      alert(`¡Empresa "${name}" creada con éxito! Ahora puedes ingresar a tu oficina 3D.`);
+      await loadCompanies();
+      companySelect.value = data.company.id;
+      tabLoginBtn.click();
+    } else {
+      alert(data.error || 'Error registrando empresa');
+    }
+  } catch (err) {
+    alert('Error conectando con el servidor');
+  }
+});
+
+// Ingreso de Empleado con Persistencia
+employeeLoginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const companyId = companySelect.value;
   const name = document.getElementById('playerName').value.trim();
   const role = document.getElementById('playerRole').value;
   const color = document.querySelector('input[name="avatarColor"]:checked').value;
 
-  socket.emit('player:join', { name, role, color });
-  joinModal.classList.add('hidden');
+  // Guardar en localStorage para persistencia
+  localStorage.setItem('induction_session', JSON.stringify({ companyId, name, role, color }));
+
+  loginPlayer(companyId, name, role, color);
+});
+
+function loginPlayer(companyId, name, role, color) {
+  socket.emit('player:join', { companyId, name, role, color });
+  authModal.classList.add('hidden');
   gameContainer.classList.remove('hidden');
+  displayEmployeeName.textContent = `${name} • ${role}`;
   handleResize();
+}
+
+// Cerrar sesión
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('induction_session');
+  location.reload();
+});
+
+// Auto-login si ya existía sesión guardada en el navegador
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadCompanies();
+  const saved = localStorage.getItem('induction_session');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data.companyId && data.name) {
+        loginPlayer(data.companyId, data.name, data.role, data.color);
+      }
+    } catch (e) {
+      console.warn('Error restaurando sesión');
+    }
+  }
 });
 
 // ----------------------------------------------------
-// SOCKET.IO EVENTOS
+// SOCKETS Y MULTIJUGADOR
 // ----------------------------------------------------
 socket.on('office:init', (data) => {
   selfId = data.selfId;
+  currentCompany = data.company;
+  displayCompanyName.textContent = data.company.name;
   players = data.players;
-  updatePlayerCount();
+
+  // Restaurar progreso de misiones guardadas en DB
+  visitedNPCs.clear();
+  if (data.savedProgress) {
+    data.savedProgress.forEach(id => visitedNPCs.add(id));
+  }
+
+  buildNpcWorld(data.npcs);
   renderChecklist();
   populateAdminForm();
+  updatePlayerCount();
 
-  // Crear avatares 3D existentes
+  // Crear avatares 3D
   for (const id in players) {
     const p = players[id];
     const isMe = id === selfId;
@@ -531,21 +535,19 @@ socket.on('player:joined', (player) => {
   playerMeshes[player.id] = mesh;
 
   addChatMessage({
-    senderName: '🏢 Recepción 3D',
-    text: `${player.name} (${player.role}) ingresó a la oficina.`,
+    senderName: '🏢 Sede 3D',
+    text: `${player.name} (${player.role}) se conectó a la oficina.`,
     isSystem: true
   });
 
-  if (localStream) {
-    initiatePeerConnection(player.id, true);
-  }
+  if (localStream) initiatePeerConnection(player.id, true);
 });
 
 socket.on('player:moved', (data) => {
   if (players[data.id]) {
     players[data.id].x = data.x;
     players[data.id].z = data.z;
-    players[data.id].facing = data.facing;
+    players[data.id].rotationY = data.rotationY;
     players[data.id].inMeetingRoom = data.inMeetingRoom;
 
     const mesh = playerMeshes[data.id];
@@ -560,8 +562,8 @@ socket.on('player:moved', (data) => {
 socket.on('player:left', (id) => {
   if (players[id]) {
     addChatMessage({
-      senderName: '🏢 Recepción 3D',
-      text: `${players[id].name} salió de la oficina.`,
+      senderName: '🏢 Sede 3D',
+      text: `${players[id].name} se desconectó.`,
       isSystem: true
     });
     delete players[id];
@@ -574,8 +576,8 @@ socket.on('player:left', (id) => {
   }
 });
 
-socket.on('office:desks_updated', (desks) => {
-  officeDesks = desks;
+socket.on('office:npcs_updated', (npcs) => {
+  buildNpcWorld(npcs);
   renderChecklist();
   populateAdminForm();
 });
@@ -593,19 +595,16 @@ chatForm.addEventListener('submit', (e) => {
 socket.on('chat:broadcast', (msg) => {
   let isNear = false;
   const me = players[selfId];
-
   if (me) {
     const dist = Math.hypot(me.x - msg.x, (me.z || 0) - (msg.z || 0));
     if (dist < 22) isNear = true;
   }
-
   addChatMessage({ ...msg, isNear, isMeeting: msg.inMeetingRoom });
 });
 
 function addChatMessage(msg) {
   const el = document.createElement('div');
   el.className = `chat-msg ${msg.isNear ? 'near' : ''} ${msg.isMeeting ? 'meeting' : ''}`;
-  
   if (msg.isSystem) {
     el.innerHTML = `<small style="color: #94a3b8">${msg.text}</small>`;
   } else {
@@ -617,7 +616,6 @@ function addChatMessage(msg) {
       <div>${escapeHtml(msg.text)}</div>
     `;
   }
-
   chatMessages.appendChild(el);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -649,11 +647,10 @@ toggleMicBtn.addEventListener('click', async () => {
       }
     } catch (err) {
       alert('Por favor autoriza el permiso de micrófono en tu navegador.');
-      console.error(err);
     }
   } else {
     isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(track => track.enabled = !isMuted);
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
     toggleMicBtn.classList.toggle('active', !isMuted);
     micIcon.textContent = isMuted ? '🎤' : '🔊';
     micText.textContent = isMuted ? 'Voz Silenciada' : 'Micrófono Activo';
@@ -718,7 +715,7 @@ function closePeerConnection(id) {
 function updateSpatialAudioVolumes() {
   if (!selfId || !players[selfId]) return;
   const me = players[selfId];
-  const maxDistance = 25; // Distancia 3D
+  const maxDistance = 25;
 
   for (const id in peerAudioElements) {
     const target = players[id];
@@ -735,19 +732,19 @@ function updateSpatialAudioVolumes() {
 }
 
 // ----------------------------------------------------
-// CHECKLIST & MODAL NPC
+// CHECKLIST, MODAL NPC CON CARA REAL & PROGRESO
 // ----------------------------------------------------
 function renderChecklist() {
   taskList.innerHTML = '';
-  officeDesks.forEach(desk => {
-    const isDone = visitedDesks.has(desk.id);
+  officeNpcs.forEach(npc => {
+    const isDone = visitedNPCs.has(npc.id);
     const li = document.createElement('li');
     li.className = `task-item ${isDone ? 'completed' : ''}`;
     li.innerHTML = `
       <span class="check-box">${isDone ? '✅' : '⬜'}</span>
       <div>
-        <strong>${desk.icon || '📌'} Habla con ${desk.name || desk.title}</strong>
-        <p>${desk.role || desk.department}</p>
+        <strong>Habla con ${npc.name}</strong>
+        <p>${npc.role} (${npc.department})</p>
       </div>
     `;
     taskList.appendChild(li);
@@ -756,62 +753,82 @@ function renderChecklist() {
 }
 
 function updateProgress() {
-  const total = officeDesks.length;
+  const total = officeNpcs.length;
   if (total === 0) return;
-  const completed = visitedDesks.size;
+  const completed = visitedNPCs.size;
   const pct = Math.round((completed / total) * 100);
   progressPercent.textContent = `${pct}%`;
   progressBarFill.style.width = `${pct}%`;
 }
 
-function openDeskModal(desk) {
-  deskTitle.textContent = `${desk.icon || '👤'} ${desk.name || desk.title} (${desk.role || desk.department})`;
-  deskDeptBadge.textContent = desk.department;
-  deskInfo.textContent = desk.info;
-  deskModal.classList.remove('hidden');
+function openNpcModal(npc) {
+  npcNameTitle.textContent = npc.name;
+  npcRoleSubtitle.textContent = npc.role;
+  npcDeptBadge.textContent = npc.department;
+  npcDialogueText.textContent = npc.info;
+  npcAvatarImg.src = npc.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80';
+  npcModal.classList.remove('hidden');
 
-  visitedDesks.add(desk.id);
+  // Guardar misión en memoria y persistir en el servidor
+  visitedNPCs.add(npc.id);
+  socket.emit('player:complete_task', npc.id);
   renderChecklist();
 }
 
-deskCloseBtn.addEventListener('click', () => deskModal.classList.add('hidden'));
+npcCloseBtn.addEventListener('click', () => npcModal.classList.add('hidden'));
 
-// Admin Form
-function populateAdminForm() {
-  adminSelectDesk.innerHTML = '';
-  officeDesks.forEach(desk => {
-    const opt = document.createElement('option');
-    opt.value = desk.id;
-    opt.textContent = `${desk.icon || '👤'} ${desk.name || desk.title}`;
-    adminSelectDesk.appendChild(opt);
-  });
-  loadSelectedDeskData();
+// ----------------------------------------------------
+// ADMIN FORM
+// ----------------------------------------------------
+function switchTab(activeBtn, activeView) {
+  [tabChatBtn, tabTasksBtn, tabAdminBtn].forEach(b => b.classList.remove('active'));
+  [chatView, tasksView, adminView].forEach(v => v.classList.remove('active'));
+  activeBtn.classList.add('active');
+  activeView.classList.add('active');
 }
 
-adminSelectDesk.addEventListener('change', loadSelectedDeskData);
+tabChatBtn.addEventListener('click', () => switchTab(tabChatBtn, chatView));
+tabTasksBtn.addEventListener('click', () => switchTab(tabTasksBtn, tasksView));
+tabAdminBtn.addEventListener('click', () => {
+  switchTab(tabAdminBtn, adminView);
+  populateAdminForm();
+});
 
-function loadSelectedDeskData() {
-  const selected = officeDesks.find(d => d.id === adminSelectDesk.value);
+function populateAdminForm() {
+  adminSelectNpc.innerHTML = '';
+  officeNpcs.forEach(npc => {
+    const opt = document.createElement('option');
+    opt.value = npc.id;
+    opt.textContent = `${npc.name} (${npc.department})`;
+    adminSelectNpc.appendChild(opt);
+  });
+  loadSelectedNpcData();
+}
+
+adminSelectNpc.addEventListener('change', loadSelectedNpcData);
+
+function loadSelectedNpcData() {
+  const selected = officeNpcs.find(n => n.id === adminSelectNpc.value);
   if (selected) {
-    adminDeskTitle.value = selected.name || selected.title;
-    adminDeskDept.value = selected.department;
-    adminDeskInfo.value = selected.info;
+    adminNpcName.value = selected.name;
+    adminNpcDept.value = selected.department;
+    adminNpcInfo.value = selected.info;
   }
 }
 
 adminEditForm.addEventListener('submit', (e) => {
   e.preventDefault();
-  const id = adminSelectDesk.value;
-  const name = adminDeskTitle.value.trim();
-  const department = adminDeskDept.value.trim();
-  const info = adminDeskInfo.value.trim();
+  const id = adminSelectNpc.value;
+  const name = adminNpcName.value.trim();
+  const department = adminNpcDept.value.trim();
+  const info = adminNpcInfo.value.trim();
 
-  socket.emit('admin:update_desk', { id, name, title: name, department, info });
-  alert('¡NPC y Estación actualizada! Todos los usuarios verán los cambios en tiempo real.');
+  socket.emit('admin:update_npc', { id, name, department, info });
+  alert('¡NPC y políticas actualizadas en la empresa!');
 });
 
 // ----------------------------------------------------
-// BUCLE PRINCIPAL DE ANIMACIÓN Y FÍSICAS 3D
+// BUCLE DE FÍSICAS 3D Y ANIMACIÓN
 // ----------------------------------------------------
 let lastTime = performance.now();
 
@@ -826,7 +843,7 @@ function animate() {
 
   // Animación idle suave de los NPCs
   npcMeshes.forEach(item => {
-    item.npcModel.rotation.y = Math.sin(now * 0.002) * 0.15;
+    item.npcModel.rotation.y = Math.sin(now * 0.002) * 0.12;
   });
 
   renderer.render(scene, camera);
@@ -846,7 +863,6 @@ function updatePlayerPhysics(delta) {
   if (keysPressed.right) moveX += speed;
 
   if (moveX !== 0 || moveZ !== 0) {
-    // Normalizar si se mueve en diagonal
     if (moveX !== 0 && moveZ !== 0) {
       moveX *= 0.7071;
       moveZ *= 0.7071;
@@ -858,11 +874,9 @@ function updatePlayerPhysics(delta) {
     playerMesh.position.x = nextX;
     playerMesh.position.z = nextZ;
 
-    // Rotar avatar hacia la dirección que camina
     const targetAngle = Math.atan2(moveX, moveZ);
     playerMesh.rotation.y = targetAngle;
 
-    // Enviar posición al servidor
     socket.emit('player:move', {
       x: nextX,
       y: 0,
@@ -872,7 +886,7 @@ function updatePlayerPhysics(delta) {
     });
   }
 
-  // Cámara en tercera persona con seguimiento suave
+  // Cámara en tercera persona (Lerp suave)
   const camTargetX = playerMesh.position.x;
   const camTargetY = playerMesh.position.y + 14;
   const camTargetZ = playerMesh.position.z + 18;
@@ -882,7 +896,7 @@ function updatePlayerPhysics(delta) {
   camera.position.z += (camTargetZ - camera.position.z) * 0.08;
   camera.lookAt(playerMesh.position.x, 1.5, playerMesh.position.z);
 
-  // Detectar cercanía con NPCs
+  // Detección de cercanía a NPCs
   nearbyTarget = null;
   for (const item of npcMeshes) {
     const dist = Math.hypot(playerMesh.position.x - item.npcData.x, playerMesh.position.z - item.npcData.z);
@@ -893,7 +907,7 @@ function updatePlayerPhysics(delta) {
   }
 
   if (nearbyTarget) {
-    promptTargetName.textContent = nearbyTarget.name || nearbyTarget.title;
+    promptTargetName.textContent = nearbyTarget.name;
     interactionPrompt.classList.remove('hidden');
   } else {
     interactionPrompt.classList.add('hidden');

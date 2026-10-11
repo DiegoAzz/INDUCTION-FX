@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Induction 3D - Videojuego Corporativo de Inducción</title>
+  <title>Induction 3D - Plataforma de Inducción Corporativa</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,30 +12,46 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <!-- Modal de Ingreso -->
-  <div id="joinModal" class="modal-overlay">
-    <div class="modal-card">
-      <div class="modal-header">
-        <span class="badge">Induction 3D Enterprise</span>
-        <h2>Bienvenido a tu Primer Día</h2>
-        <p>Entra a la sede corporativa en 3D y conoce a los equipos y NPCs de inducción.</p>
+  <!-- Modal de Autenticación / Registro de Empresas -->
+  <div id="authModal" class="modal-overlay">
+    <div class="modal-card auth-card">
+      <div class="auth-header">
+        <div class="badge-row">
+          <span class="badge">Induction Enterprise SaaS</span>
+        </div>
+        <h2>Sede Virtual Corporativa</h2>
+        <p>Vive tu inducción en un entorno 3D interactivo con NPCs y compañeros en vivo.</p>
       </div>
 
-      <form id="joinForm">
+      <!-- Selector de Tipo de Acceso -->
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab-btn active" id="tabLoginBtn">👤 Entrar como Empleado</button>
+        <button type="button" class="auth-tab-btn" id="tabRegisterCompanyBtn">🏢 Registrar Empresa</button>
+      </div>
+
+      <!-- Formulario 1: Ingreso de Empleado -->
+      <form id="employeeLoginForm" class="auth-form-content">
+        <div class="form-group">
+          <label for="companySelect">Empresa</label>
+          <select id="companySelect" required>
+            <option value="demo-corp">TechInnovate HQ (Empresa Demo)</option>
+          </select>
+        </div>
+
         <div class="form-group">
           <label for="playerName">Tu Nombre Completo</label>
           <input type="text" id="playerName" placeholder="Ej. Diego Zúñiga" required autofocus>
         </div>
 
         <div class="form-group">
-          <label for="playerRole">Tu Departamento / Rol</label>
+          <label for="playerRole">Tu Puesto / Departamento</label>
           <select id="playerRole">
             <option value="Nuevo Ingreso (Onboarding)">🌱 Nuevo Ingreso (Onboarding)</option>
             <option value="Ingeniería de Software">💻 Ingeniería de Software</option>
             <option value="Diseño de Producto">🎨 Diseño de Producto</option>
             <option value="Recursos Humanos">🤝 Recursos Humanos</option>
             <option value="Operaciones & IT">⚡ Operaciones & IT</option>
-            <option value="Director General">👔 Director General</option>
+            <option value="Gerente / Director">👔 Gerente / Director</option>
           </select>
         </div>
 
@@ -67,27 +83,47 @@
 
         <button type="submit" class="btn-primary">Entrar a la Oficina 3D 🚀</button>
       </form>
+
+      <!-- Formulario 2: Registro de Nueva Empresa (B2B) -->
+      <form id="newCompanyForm" class="auth-form-content hidden">
+        <div class="form-group">
+          <label for="newCompanyName">Nombre de tu Empresa u Organización</label>
+          <input type="text" id="newCompanyName" placeholder="Ej. Acme Studios Corp" required>
+        </div>
+
+        <div class="form-group">
+          <label for="adminEmail">Correo Corporativo del Administrador / RRHH</label>
+          <input type="email" id="adminEmail" placeholder="ejemplo@acme.com" required>
+        </div>
+
+        <div class="b2b-features-hint">
+          <p>✔️ Crea tu sede virtual 3D privada al instante.</p>
+          <p>✔️ NPCs de Recursos Humanos, TI e Ingeniería incluidos.</p>
+          <p>✔️ Seguimiento persistente del progreso de tus empleados.</p>
+        </div>
+
+        <button type="submit" class="btn-primary" style="background: #10b981;">Crear Sede 3D para mi Empresa ✨</button>
+      </form>
     </div>
   </div>
 
-  <!-- HUD Principal -->
+  <!-- HUD Principal del Videojuego 3D -->
   <div id="gameContainer" class="game-container hidden">
     <!-- Header -->
     <header class="game-header">
       <div class="office-brand">
         <div class="status-indicator"></div>
         <div>
-          <h1 class="brand-title">Induction 3D HQ</h1>
-          <p class="brand-sub">Sede 3D • NPCs Inteligentes & Audio Espacial</p>
+          <h1 class="brand-title" id="displayCompanyName">TechInnovate HQ</h1>
+          <p class="brand-sub">Sede Virtual 3D • <span id="displayEmployeeName">Empleado</span></p>
         </div>
       </div>
 
       <div class="controls-hint">
         <span>🎮 Muévete con <strong>W, A, S, D</strong> o <strong>Flechas</strong></span>
-        <span>💡 Habla con NPCs y puestos con <strong>[ E ]</strong></span>
+        <span>💡 Acércate a los NPCs y pulsa <strong>[ E ]</strong> para hablar</span>
       </div>
 
-      <!-- Barra de herramientas de Voz -->
       <div class="voice-controls">
         <button id="toggleMicBtn" class="btn-voice" title="Activar/Silenciar Micrófono">
           <span id="micIcon">🎤</span>
@@ -95,15 +131,18 @@
         </button>
       </div>
 
-      <div class="online-pill">
-        <span id="playerCount">1</span> en línea
+      <div class="header-actions">
+        <div class="online-pill">
+          <span id="playerCount">1</span> en línea
+        </div>
+        <button id="logoutBtn" class="btn-logout" title="Cambiar de empleado o empresa">Cerrar Sesión</button>
       </div>
     </header>
 
-    <!-- Contenedor 3D y Sidebar -->
+    <!-- Canvas 3D y Barra Lateral -->
     <main class="game-main">
       <div id="canvas3dContainer" class="canvas-wrapper">
-        <!-- Three.js inyecta el canvas aquí -->
+        <!-- Three.js Canvas -->
 
         <!-- Indicador de acción interactiva -->
         <div id="interactionPrompt" class="interaction-prompt hidden">
@@ -112,11 +151,11 @@
 
         <!-- Alerta de Sala de Juntas -->
         <div id="meetingAlert" class="meeting-alert hidden">
-          🔒 Estás dentro de la <strong>Sala de Juntas Ejecutiva</strong>
+          🔒 Estás en la <strong>Sala de Juntas Ejecutiva</strong> (Privado)
         </div>
       </div>
 
-      <!-- Sidebar -->
+      <!-- Barra Lateral -->
       <aside class="sidebar">
         <div class="sidebar-tabs">
           <button class="tab-btn active" id="tabChatBtn">💬 Chat</button>
@@ -124,7 +163,7 @@
           <button class="tab-btn" id="tabAdminBtn">⚙️ Admin RRHH</button>
         </div>
 
-        <!-- Chat -->
+        <!-- Vista de Chat -->
         <div id="chatView" class="tab-content active">
           <div class="proximity-banner">
             <span class="icon">📡</span>
@@ -137,70 +176,78 @@
           </form>
         </div>
 
-        <!-- Inducción Checklist -->
+        <!-- Vista de Checklist de Inducción -->
         <div id="tasksView" class="tab-content">
           <div class="checklist-header">
             <div class="progress-wrap">
               <div class="progress-info">
-                <span>Progreso de Inducción</span>
+                <span>Tu Progreso de Inducción</span>
                 <strong id="progressPercent">0%</strong>
               </div>
               <div class="progress-bar-bg">
                 <div id="progressBarFill" class="progress-bar-fill" style="width: 0%"></div>
               </div>
             </div>
-            <p>Habla con los NPCs de cada área para completar tu inducción.</p>
+            <p>Habla con los NPCs de cada área. Tu avance queda guardado automáticamente.</p>
           </div>
           <ul class="task-list" id="taskList"></ul>
         </div>
 
-        <!-- Admin RRHH -->
+        <!-- Vista de Administración para RRHH -->
         <div id="adminView" class="tab-content">
           <div class="admin-header">
-            <h3>Gestor de Estaciones & NPCs</h3>
-            <p>Edita en vivo los diálogos e información que brindan los NPCs.</p>
+            <h3>Personalizar NPCs de tu Empresa</h3>
+            <p>Ajusta las políticas y mensajes de bienvenida que ven tus nuevos ingresos.</p>
           </div>
           <form id="adminEditForm" class="admin-form">
             <div class="form-group">
-              <label for="adminSelectDesk">Seleccionar Estación / NPC</label>
-              <select id="adminSelectDesk"></select>
+              <label for="adminSelectNpc">Seleccionar NPC / Puesto</label>
+              <select id="adminSelectNpc"></select>
             </div>
             <div class="form-group">
-              <label for="adminDeskTitle">Nombre y Cargo del NPC</label>
-              <input type="text" id="adminDeskTitle" required>
+              <label for="adminNpcName">Nombre y Cargo del NPC</label>
+              <input type="text" id="adminNpcName" required>
             </div>
             <div class="form-group">
-              <label for="adminDeskDept">Departamento</label>
-              <input type="text" id="adminDeskDept" required>
+              <label for="adminNpcDept">Departamento</label>
+              <input type="text" id="adminNpcDept" required>
             </div>
             <div class="form-group">
-              <label for="adminDeskInfo">Diálogo de Inducción / Políticas</label>
-              <textarea id="adminDeskInfo" rows="4" required></textarea>
+              <label for="adminNpcInfo">Diálogo de Inducción / Políticas Corporativas</label>
+              <textarea id="adminNpcInfo" rows="4" required></textarea>
             </div>
-            <button type="submit" class="btn-primary">Guardar en Vivo 💾</button>
+            <button type="submit" class="btn-primary">Guardar Cambios en la Empresa 💾</button>
           </form>
         </div>
       </aside>
     </main>
   </div>
 
-  <!-- Modal de Diálogo con el NPC / Estación -->
-  <div id="deskModal" class="modal-overlay hidden">
-    <div class="modal-card desk-card">
-      <div class="desk-card-header">
-        <span id="deskDeptBadge" class="badge">Departamento</span>
-        <h2 id="deskTitle">Puesto de Información</h2>
+  <!-- Modal Conversacional de Diálogo con NPCs con Cara Real -->
+  <div id="npcModal" class="modal-overlay hidden">
+    <div class="modal-card npc-dialog-card">
+      <div class="npc-profile-header">
+        <div class="npc-avatar-wrapper">
+          <img id="npcAvatarImg" src="" alt="Foto NPC" class="npc-avatar-img">
+          <span class="online-dot"></span>
+        </div>
+        <div class="npc-details">
+          <span id="npcDeptBadge" class="badge">Departamento</span>
+          <h2 id="npcNameTitle">Nombre del NPC</h2>
+          <p id="npcRoleSubtitle" class="npc-role-sub">Cargo del NPC</p>
+        </div>
       </div>
-      <div class="desk-card-body">
-        <p id="deskInfo">Diálogo detallado del NPC...</p>
+
+      <div class="npc-speech-bubble">
+        <p id="npcDialogueText">Diálogo...</p>
       </div>
-      <div class="desk-card-footer">
-        <button id="deskCloseBtn" class="btn-primary">¡Muchas gracias! Misión completada ✔️</button>
+
+      <div class="npc-dialog-footer">
+        <button id="npcCloseBtn" class="btn-primary">¡Muchas gracias, entendido! Completar misión ✔️</button>
       </div>
     </div>
   </div>
 
-  <!-- Contenedor oculto de audio para WebRTC -->
   <div id="audioStreamsContainer" style="display: none;"></div>
 
   <script src="/socket.io/socket.io.js"></script>
