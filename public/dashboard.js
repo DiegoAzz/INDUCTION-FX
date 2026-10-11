@@ -282,13 +282,27 @@ function renderEmployeesTable(employees) {
     }
 
     const isTerminated = emp.status === 'TERMINATED';
+    const isFemale = (emp.gender === 'female' || emp.avatarStyle === 'executive_female' || (emp.name && (emp.name.toLowerCase().includes('yenis') || emp.name.toLowerCase().includes('maria') || emp.name.toLowerCase().endsWith('a'))));
+    const avatarIcon = isFemale ? '👩‍💼' : '👨‍💼';
+    const suitDesc = isFemale ? 'Ejecutiva Formal' : 'Ejecutivo Formal';
 
     tr.innerHTML = `
-      <td><strong>${emp.name}</strong></td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">${avatarIcon}</span>
+          <div>
+            <strong>${emp.name}</strong>
+            <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 5px; margin-top: 2px;">
+              <span style="display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: ${emp.color || '#1e3a8a'};"></span>
+              <span>${suitDesc}</span>
+            </div>
+          </div>
+        </div>
+      </td>
       <td><span style="color: #93c5fd;">${emp.email}</span></td>
       <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: #34d399;">${emp.password || '123456'}</code></td>
       <td>${emp.role}</td>
-      <td><span class="badge" style="font-size: 11px;">${emp.department}</span></td>
+      <td><span class="badge" style="font-size: 11px;">${emp.department || 'General'}</span></td>
       <td>${statusBadge}</td>
       <td>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -632,7 +646,34 @@ window.deleteDept = async function(deptId) {
   }
 };
 
-// Registrar Funcionario
+// Manejo interactivo de selección de género en el modal
+const pillGenderMale = document.getElementById('pillGenderMale');
+const pillGenderFemale = document.getElementById('pillGenderFemale');
+if (pillGenderMale && pillGenderFemale) {
+  pillGenderMale.addEventListener('click', () => {
+    pillGenderMale.classList.add('active');
+    pillGenderMale.style.background = 'rgba(59, 130, 246, 0.2)';
+    pillGenderMale.style.borderColor = '#3b82f6';
+    pillGenderFemale.classList.remove('active');
+    pillGenderFemale.style.background = 'rgba(30, 41, 59, 0.4)';
+    pillGenderFemale.style.borderColor = 'rgba(255,255,255,0.1)';
+    const radio = pillGenderMale.querySelector('input');
+    if (radio) radio.checked = true;
+  });
+
+  pillGenderFemale.addEventListener('click', () => {
+    pillGenderFemale.classList.add('active');
+    pillGenderFemale.style.background = 'rgba(236, 72, 153, 0.2)';
+    pillGenderFemale.style.borderColor = '#ec4899';
+    pillGenderMale.classList.remove('active');
+    pillGenderMale.style.background = 'rgba(30, 41, 59, 0.4)';
+    pillGenderMale.style.borderColor = 'rgba(255,255,255,0.1)';
+    const radio = pillGenderFemale.querySelector('input');
+    if (radio) radio.checked = true;
+  });
+}
+
+// Registrar Funcionario con Personaje y Ropa Ejecutiva
 formNewEmp.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('newEmpName').value.trim();
@@ -641,18 +682,44 @@ formNewEmp.addEventListener('submit', async (e) => {
   const department = newEmpDeptSelect.value;
   const role = document.getElementById('newEmpRole').value.trim();
 
+  // Opciones de Personaje Ejecutivo
+  const genderRadio = document.querySelector('input[name="newEmpGender"]:checked');
+  const gender = genderRadio ? genderRadio.value : 'male';
+  const suitStyleEl = document.getElementById('newEmpSuitStyle');
+  const suitStyle = suitStyleEl ? suitStyleEl.value : 'formal_suit';
+  const suitColorRadio = document.querySelector('input[name="newEmpSuitColor"]:checked');
+  const suitColor = suitColorRadio ? suitColorRadio.value : '#1e3a8a';
+  const tieColorEl = document.getElementById('newEmpTieColor');
+  const tieColor = tieColorEl ? tieColorEl.value : '#dc2626';
+
+  const avatarStyle = gender === 'female' ? 'executive_female' : 'executive_male';
+
   try {
     const res = await fetch(`/api/companies/${currentCompanyId}/employees`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password, department, role, color: '#3B82F6' })
+      body: JSON.stringify({
+        name,
+        email,
+        password,
+        department,
+        role,
+        color: suitColor,
+        suitColor,
+        tieColor,
+        gender,
+        suitStyle,
+        avatarStyle
+      })
     });
     const data = await res.json();
     if (data.success) {
       modalNewEmp.classList.add('hidden');
       formNewEmp.reset();
       await loadDashboardData(currentCompanyId);
-      alert(`¡Funcionario "${name}" registrado exitosamente en la nómina!`);
+      alert(`¡Funcionario "${name}" registrado exitosamente con su atuendo ejecutivo corporativo!`);
+    } else {
+      alert(data.error || 'Error al registrar funcionario');
     }
   } catch (err) {
     alert('Error registrando funcionario');

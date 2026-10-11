@@ -261,6 +261,82 @@
           <label for="newEmpRole">Cargo o Puesto</label>
           <input type="text" id="newEmpRole" placeholder="Ej. Analista Senior" required>
         </div>
+
+        <!-- Selector de Personaje y Vestimenta Ejecutiva -->
+        <div style="border-top: 1px solid var(--border); padding-top: 14px; margin-top: 14px;">
+          <label style="font-weight: 700; font-size: 13px; color: #93c5fd; display: block; margin-bottom: 8px;">
+            👤 Configuración de Personaje 3D (Ejecutivo)
+          </label>
+
+          <!-- 1. Género -->
+          <div class="form-group">
+            <label style="font-size: 12px;">Género del Funcionario</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <label class="gender-pill active" id="pillGenderMale" style="cursor: pointer; background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 8px; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; color: #fff;">
+                <input type="radio" name="newEmpGender" value="male" checked style="display: none;">
+                👨 Hombre Ejecutivo
+              </label>
+              <label class="gender-pill" id="pillGenderFemale" style="cursor: pointer; background: rgba(30, 41, 59, 0.4); border: 2px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 10px; text-align: center; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; color: #fff;">
+                <input type="radio" name="newEmpGender" value="female" style="display: none;">
+                👩 Mujer Ejecutiva
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. Estilo de Traje Corporativo -->
+          <div class="form-group">
+            <label for="newEmpSuitStyle" style="font-size: 12px;">Estilo de Vestimenta Corporativa</label>
+            <select id="newEmpSuitStyle" style="width: 100%; padding: 10px; background: var(--bg-surface); border: 1px solid var(--border); color: #fff; border-radius: 8px; font-size: 13px;">
+              <option value="formal_suit">👔 Traje Formal Clásico / Alta Gerencia (Saco, Corbata y Maletín)</option>
+              <option value="modern_blazer">💼 Business Formal Moderno (Blazer Sastre y Portafolio)</option>
+              <option value="business_casual">👔 Business Casual de Oficina (Camisa de Botones y Gafete)</option>
+            </select>
+          </div>
+
+          <!-- 3. Color del Traje / Uniforme de Empresa -->
+          <div class="form-group">
+            <label style="font-size: 12px;">Color del Traje / Blazer de Empresa</label>
+            <div class="color-picker" style="display: flex; gap: 10px; margin-top: 4px;">
+              <label class="color-swatch" style="--c: #1e3a8a" title="Azul Marino Corporativo">
+                <input type="radio" name="newEmpSuitColor" value="#1e3a8a" checked>
+                <span></span>
+              </label>
+              <label class="color-swatch" style="--c: #0f172a" title="Negro Ejecutivo">
+                <input type="radio" name="newEmpSuitColor" value="#0f172a">
+                <span></span>
+              </label>
+              <label class="color-swatch" style="--c: #334155" title="Gris Marengo / Carbón">
+                <input type="radio" name="newEmpSuitColor" value="#334155">
+                <span></span>
+              </label>
+              <label class="color-swatch" style="--c: #831843" title="Vino Tinto / Borgoña">
+                <input type="radio" name="newEmpSuitColor" value="#831843">
+                <span></span>
+              </label>
+              <label class="color-swatch" style="--c: #065f46" title="Verde Esmeralda Corporativo">
+                <input type="radio" name="newEmpSuitColor" value="#065f46">
+                <span></span>
+              </label>
+              <label class="color-swatch" style="--c: #2563eb" title="Azul Real Institucional">
+                <input type="radio" name="newEmpSuitColor" value="#2563eb">
+                <span></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 4. Color de Corbata / Acento -->
+          <div class="form-group">
+            <label for="newEmpTieColor" style="font-size: 12px;">Color de Corbata / Detalle</label>
+            <select id="newEmpTieColor" style="width: 100%; padding: 10px; background: var(--bg-surface); border: 1px solid var(--border); color: #fff; border-radius: 8px; font-size: 13px;">
+              <option value="#dc2626">🔴 Rojo Ejecutivo (Power Tie)</option>
+              <option value="#1d4ed8">🔵 Azul Corporativo</option>
+              <option value="#d97706">🟡 Dorado / Ámbar</option>
+              <option value="#059669">🟢 Verde Esmeralda</option>
+              <option value="#0f172a">⚫ Negro Formal</option>
+            </select>
+          </div>
+        </div>
+
         <button type="submit" class="btn-primary" style="background: #10b981;">Guardar Funcionario en BD 💾</button>
         <button type="button" id="closeNewEmpBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cancelar</button>
       </form>

@@ -349,7 +349,7 @@ app.get('/api/companies/:companyId', async (req, res) => {
 // Registrar un nuevo funcionario en la base de datos de una empresa
 app.post('/api/companies/:companyId/employees', async (req, res) => {
   const { companyId } = req.params;
-  const { name, email, role, department, color, password } = req.body;
+  const { name, email, role, department, color, password, gender, suitStyle, suitColor, tieColor, avatarStyle } = req.body;
 
   if (!name || !email) {
     return res.status(400).json({ error: 'Nombre y correo requeridos' });
@@ -362,7 +362,12 @@ app.post('/api/companies/:companyId/employees', async (req, res) => {
       password: (password && password.trim()) ? password.trim() : '123456',
       role: role || 'Funcionario',
       department: department || 'General',
-      color: color || '#3B82F6'
+      color: suitColor || color || '#1e3a8a',
+      gender: gender || 'male',
+      suitStyle: suitStyle || 'formal_suit',
+      suitColor: suitColor || color || '#1e3a8a',
+      tieColor: tieColor || '#dc2626',
+      avatarStyle: avatarStyle || (gender === 'female' ? 'executive_female' : 'executive_male')
     });
     res.status(201).json({ success: true, employee });
   } catch (err) {
@@ -595,12 +600,21 @@ io.on('connection', (socket) => {
       return;
     }
 
+    const empSuitColor = (existingEmp && (existingEmp.suitColor || existingEmp.color)) || data.suitColor || data.color || '#1e3a8a';
+    const empTieColor = (existingEmp && existingEmp.tieColor) || data.tieColor || '#dc2626';
+    const empGender = (existingEmp && existingEmp.gender) || data.gender || ((data.avatarStyle === 'executive_female' || (data.name && data.name.toLowerCase().endsWith('a'))) ? 'female' : 'male');
+    const empAvatarStyle = (existingEmp && existingEmp.avatarStyle) || data.avatarStyle || (empGender === 'female' ? 'executive_female' : 'executive_male');
+
     const employee = await dbManager.createEmployee(companyId, {
       name: data.name,
       email: email,
-      role: data.role || 'Nuevo Ingreso',
-      department: data.department || 'General',
-      color: data.color || '#3B82F6'
+      role: data.role || (existingEmp && existingEmp.role) || 'Nuevo Ingreso',
+      department: data.department || (existingEmp && existingEmp.department) || 'General',
+      color: empSuitColor,
+      suitColor: empSuitColor,
+      tieColor: empTieColor,
+      gender: empGender,
+      avatarStyle: empAvatarStyle
     });
 
     activePlayers[socket.id] = {
@@ -608,10 +622,13 @@ io.on('connection', (socket) => {
       companyId: companyId,
       name: data.name,
       email: email,
-      role: data.role,
-      department: data.department || 'General',
-      color: data.color || '#3B82F6',
-      avatarStyle: data.avatarStyle || 'developer',
+      role: data.role || (existingEmp && existingEmp.role) || 'Funcionario',
+      department: data.department || (existingEmp && existingEmp.department) || 'General',
+      color: empSuitColor,
+      suitColor: empSuitColor,
+      tieColor: empTieColor,
+      gender: empGender,
+      avatarStyle: empAvatarStyle,
       x: (Math.random() * 6 - 3),
       y: 0,
       z: (Math.random() * 6 - 3),

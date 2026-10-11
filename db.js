@@ -114,7 +114,12 @@ const dbManager = {
               terminationReason: e.terminationReason || null,
               terminationDate: e.terminationDate || null,
               department: c.departments.find(d => d.id === e.departmentId)?.name || 'General',
-              color: e.color || '#3B82F6'
+              color: e.color || '#1e3a8a',
+              gender: e.gender || 'male',
+              suitStyle: e.suitStyle || 'formal_suit',
+              suitColor: e.suitColor || e.color || '#1e3a8a',
+              tieColor: e.tieColor || '#dc2626',
+              avatarStyle: e.avatarStyle || (e.gender === 'female' ? 'executive_female' : 'executive_male')
             };
           });
 
@@ -218,6 +223,11 @@ const dbManager = {
   // 4. Registrar Funcionario en la Empresa
   async createEmployee(companySlug, empData) {
     const password = empData.password || '123456';
+    const suitColor = empData.suitColor || empData.color || '#1e3a8a';
+    const tieColor = empData.tieColor || '#dc2626';
+    const gender = empData.gender || 'male';
+    const suitStyle = empData.suitStyle || 'formal_suit';
+    const avatarStyle = empData.avatarStyle || (gender === 'female' ? 'executive_female' : 'executive_male');
 
     if (usePostgres) {
       try {
@@ -238,7 +248,7 @@ const dbManager = {
               name: empData.name,
               role: empData.role,
               departmentId: dept?.id,
-              color: empData.color,
+              color: suitColor,
               password: password
             },
             create: {
@@ -247,11 +257,18 @@ const dbManager = {
               name: empData.name,
               email: empData.email,
               role: empData.role,
-              color: empData.color,
+              color: suitColor,
               password: password
             }
           });
-          return emp;
+          return {
+            ...emp,
+            gender,
+            suitStyle,
+            suitColor,
+            tieColor,
+            avatarStyle
+          };
         }
       } catch (err) {
         console.error('[DB Error] createEmployee postgres:', err);
@@ -263,6 +280,12 @@ const dbManager = {
     if (company) {
       company.employees[empData.email] = {
         ...empData,
+        color: suitColor,
+        suitColor,
+        tieColor,
+        gender,
+        suitStyle,
+        avatarStyle,
         password: password,
         visitedNPCs: []
       };
