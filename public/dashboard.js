@@ -1,4 +1,4 @@
-// Induction - Dashboard Corporativo B2B
+// Induction - Dashboard Corporativo B2B & Módulo de Recursos Humanos (Simulador de Vida Real)
 const companySelectDash = document.getElementById('companySelectDash');
 const dashCompanyNameTitle = document.getElementById('dashCompanyNameTitle');
 const metricEmployeesCount = document.getElementById('metricEmployeesCount');
@@ -8,10 +8,22 @@ const btnCopyEmployeeInvite = document.getElementById('btnCopyEmployeeInvite');
 const btnAdminLogout = document.getElementById('btnAdminLogout');
 const linkEnter3d = document.getElementById('linkEnter3d');
 
+// Tabs
+const tabBtnDepts = document.getElementById('tabBtnDepts');
+const tabBtnEmployees = document.getElementById('tabBtnEmployees');
+const tabBtnHR = document.getElementById('tabBtnHR');
+const sectionDepts = document.getElementById('sectionDepts');
+const sectionEmployees = document.getElementById('sectionEmployees');
+const sectionHR = document.getElementById('sectionHR');
+const hrPendingBadge = document.getElementById('hrPendingBadge');
+
+// Grids y Tablas
 const departmentsGrid = document.getElementById('departmentsGrid');
 const employeesTableBody = document.getElementById('employeesTableBody');
+const hrRequestsTableBody = document.getElementById('hrRequestsTableBody');
+const hrActionsTableBody = document.getElementById('hrActionsTableBody');
 
-// Modales
+// Modales Principales
 const modalNewDept = document.getElementById('modalNewDept');
 const openNewDeptModalBtn = document.getElementById('openNewDeptModalBtn');
 const closeNewDeptBtn = document.getElementById('closeNewDeptBtn');
@@ -30,14 +42,65 @@ const formCompanyAdminLogin = document.getElementById('formCompanyAdminLogin');
 const compLoginEmail = document.getElementById('compLoginEmail');
 const compLoginPass = document.getElementById('compLoginPass');
 
+// Modales de RRHH (Trámites y Acciones Disciplinarias)
+const modalResolveRequest = document.getElementById('modalResolveRequest');
+const closeResolveModalBtn = document.getElementById('closeResolveModalBtn');
+const resolveModalTitle = document.getElementById('resolveModalTitle');
+const resolveEmployeeName = document.getElementById('resolveEmployeeName');
+const resolveEmployeeEmail = document.getElementById('resolveEmployeeEmail');
+const resolveType = document.getElementById('resolveType');
+const resolvePeriod = document.getElementById('resolvePeriod');
+const resolveReason = document.getElementById('resolveReason');
+const resolveRequestId = document.getElementById('resolveRequestId');
+const resolveAdminNotes = document.getElementById('resolveAdminNotes');
+const btnApproveRequest = document.getElementById('btnApproveRequest');
+const btnRejectRequest = document.getElementById('btnRejectRequest');
+
+const modalHRAction = document.getElementById('modalHRAction');
+const openHRActionModalBtn = document.getElementById('openHRActionModalBtn');
+const closeHRActionModalBtn = document.getElementById('closeHRActionModalBtn');
+const formHRAction = document.getElementById('formHRAction');
+const actionEmployeeSelect = document.getElementById('actionEmployeeSelect');
+const actionTypeSelect = document.getElementById('actionTypeSelect');
+const actionTitle = document.getElementById('actionTitle');
+const actionDescription = document.getElementById('actionDescription');
+
 let currentCompanyId = null;
 let currentCompanyData = null;
+let currentRequests = [];
 
-// Obtener slug de la URL si existe (?company=sysnet)
+// Obtener slug de la URL (?company=slug)
 const urlParams = new URLSearchParams(window.location.search);
 const requestedSlug = urlParams.get('company');
 
-// 1. Inicializar Dashboard
+// 1. Manejo de Pestañas
+function switchTab(target) {
+  tabBtnDepts.classList.remove('active');
+  tabBtnEmployees.classList.remove('active');
+  tabBtnHR.classList.remove('active');
+
+  sectionDepts.classList.add('hidden');
+  sectionEmployees.classList.add('hidden');
+  sectionHR.classList.add('hidden');
+
+  if (target === 'depts') {
+    tabBtnDepts.classList.add('active');
+    sectionDepts.classList.remove('hidden');
+  } else if (target === 'employees') {
+    tabBtnEmployees.classList.add('active');
+    sectionEmployees.classList.remove('hidden');
+  } else if (target === 'hr') {
+    tabBtnHR.classList.add('active');
+    sectionHR.classList.remove('hidden');
+    loadHRData(currentCompanyId);
+  }
+}
+
+tabBtnDepts.addEventListener('click', () => switchTab('depts'));
+tabBtnEmployees.addEventListener('click', () => switchTab('employees'));
+tabBtnHR.addEventListener('click', () => switchTab('hr'));
+
+// 2. Inicializar Dashboard
 async function initDashboard() {
   try {
     const res = await fetch('/api/companies');
@@ -66,23 +129,21 @@ async function initDashboard() {
   }
 }
 
-// 2. Comprobar Autenticación del Administrador de la Empresa
+// 3. Comprobar Autenticación del Administrador
 function checkCompanyAuthAndLoad(companyId) {
   const authKey = 'comp_auth_' + companyId;
   const isAuth = sessionStorage.getItem(authKey);
 
-  // Si ya se autenticó previamente en esta pestaña, cargar directo
   if (isAuth === 'true') {
     companyAdminLoginModal.classList.add('hidden');
     loadDashboardData(companyId);
   } else {
-    // Solicitar login
     loginModalCompanyName.textContent = `Acceso a ${companyId.toUpperCase()}`;
     companyAdminLoginModal.classList.remove('hidden');
   }
 }
 
-// 3. Login de Administrador de Empresa
+// 4. Login de Administrador de Empresa
 formCompanyAdminLogin.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = compLoginEmail.value.trim();
@@ -117,15 +178,13 @@ btnAdminLogout.addEventListener('click', () => {
 
 companySelectDash.addEventListener('change', () => {
   currentCompanyId = companySelectDash.value;
-  // Actualizar URL
   const newUrl = new URL(window.location.href);
   newUrl.searchParams.set('company', currentCompanyId);
   window.history.pushState({}, '', newUrl);
-
   checkCompanyAuthAndLoad(currentCompanyId);
 });
 
-// 4. Cargar detalles de la empresa
+// 5. Cargar Datos Generales de la Empresa
 async function loadDashboardData(companyId) {
   try {
     const res = await fetch(`/api/companies/${companyId}`);
@@ -164,7 +223,7 @@ async function loadDashboardData(companyId) {
       departmentsGrid.appendChild(card);
     });
 
-    // Actualizar select de dependencias en modal empleado
+    // Select de dependencias para nuevo empleado
     newEmpDeptSelect.innerHTML = '';
     npcs.forEach(d => {
       const opt = document.createElement('option');
@@ -173,43 +232,335 @@ async function loadDashboardData(companyId) {
       newEmpDeptSelect.appendChild(opt);
     });
 
-    // Render Tabla de Funcionarios
-    employeesTableBody.innerHTML = '';
-    if (employees.length === 0) {
-      employeesTableBody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
-            No hay funcionarios registrados aún. Haz clic en "+ Registrar Funcionario".
-          </td>
-        </tr>
-      `;
-    } else {
-      employees.forEach(emp => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${emp.name}</strong></td>
-          <td><span style="color: #93c5fd;">${emp.email}</span></td>
-          <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: #34d399;">${emp.password || '123456'}</code></td>
-          <td>${emp.role}</td>
-          <td><span class="badge" style="font-size: 11px;">${emp.department}</span></td>
-          <td>
-            <div style="display: flex; gap: 6px;">
-              <button class="btn-goto-3d" style="padding: 4px 8px; font-size: 11px; background: #3b82f6;" onclick="copyEmployeeCard('${emp.name}', '${emp.email}', '${emp.password || '123456'}')">
-                📋 Copiar Acceso
-              </button>
-              <button class="btn-delete" onclick="deleteEmployee('${emp.email}')">Eliminar</button>
-            </div>
-          </td>
-        `;
-        employeesTableBody.appendChild(tr);
-      });
-    }
+    // Select de empleados para acciones disciplinarias
+    actionEmployeeSelect.innerHTML = '';
+    employees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.email;
+      opt.textContent = `${emp.name} (${emp.email}) - ${emp.role}`;
+      actionEmployeeSelect.appendChild(opt);
+    });
+
+    // Render Tabla de Funcionarios con Estado Laboral de Vida Real
+    renderEmployeesTable(employees);
+
+    // Cargar datos de RRHH
+    loadHRData(companyId);
+
   } catch (err) {
     console.error('Error cargando datos de empresa:', err);
   }
 }
 
-// 5. Copiar link general para empleados
+// Render Tabla de Empleados
+function renderEmployeesTable(employees) {
+  employeesTableBody.innerHTML = '';
+  if (employees.length === 0) {
+    employeesTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">
+          No hay funcionarios registrados aún. Haz clic en "+ Registrar Funcionario".
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  employees.forEach(emp => {
+    const tr = document.createElement('tr');
+
+    // Estado laboral badge
+    let statusBadge = '<span class="badge-status badge-status-active">🟢 Activo</span>';
+    if (emp.status === 'VACATION') {
+      statusBadge = '<span class="badge-status badge-status-vacation">🏖️ Vacaciones</span>';
+    } else if (emp.status === 'ON_LEAVE') {
+      statusBadge = '<span class="badge-status badge-status-leave">🟡 De Permiso</span>';
+    } else if (emp.status === 'TERMINATED') {
+      statusBadge = '<span class="badge-status badge-status-terminated">🛑 Despedido</span>';
+    } else if (emp.status === 'SUSPENDED') {
+      statusBadge = '<span class="badge-status badge-status-suspended">⏸️ Suspendido</span>';
+    }
+
+    const isTerminated = emp.status === 'TERMINATED';
+
+    tr.innerHTML = `
+      <td><strong>${emp.name}</strong></td>
+      <td><span style="color: #93c5fd;">${emp.email}</span></td>
+      <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: #34d399;">${emp.password || '123456'}</code></td>
+      <td>${emp.role}</td>
+      <td><span class="badge" style="font-size: 11px;">${emp.department}</span></td>
+      <td>${statusBadge}</td>
+      <td>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <button class="btn-goto-3d" style="padding: 4px 8px; font-size: 11px; background: #3b82f6;" onclick="copyEmployeeCard('${emp.name}', '${emp.email}', '${emp.password || '123456'}')">
+            📋 Copiar Acceso
+          </button>
+          ${isTerminated ? `
+            <button class="btn-goto-3d" style="padding: 4px 8px; font-size: 11px; background: #10b981;" onclick="openRehireModal('${emp.email}')">
+              ✅ Reintegrar
+            </button>
+          ` : `
+            <button class="btn-delete" style="padding: 4px 8px; font-size: 11px; border-color: #f59e0b; color: #fcd34d; background: rgba(245, 158, 11, 0.15);" onclick="openSanctionModal('${emp.email}')">
+              ⚖️ Sancionar / Despedir
+            </button>
+          `}
+          <button class="btn-delete" style="padding: 4px 8px; font-size: 11px;" onclick="deleteEmployee('${emp.email}')">Eliminar</button>
+        </div>
+      </td>
+    `;
+    employeesTableBody.appendChild(tr);
+  });
+}
+
+// 6. Cargar Módulo de Recursos Humanos & Trámites
+async function loadHRData(companyId) {
+  try {
+    // 1. Solicitudes y Radicados
+    const reqRes = await fetch(`/api/companies/${companyId}/hr/requests`);
+    const requests = await reqRes.json();
+    currentRequests = Array.isArray(requests) ? requests : [];
+
+    const pendingCount = currentRequests.filter(r => r.status === 'PENDIENTE').length;
+    hrPendingBadge.textContent = pendingCount;
+    hrPendingBadge.style.background = pendingCount > 0 ? '#ef4444' : 'rgba(255,255,255,0.2)';
+
+    renderHRRequestsTable(currentRequests);
+
+    // 2. Historial de Decisiones Laborales y Despidos
+    const actRes = await fetch(`/api/companies/${companyId}/hr/actions`);
+    const actions = await actRes.json();
+    renderHRActionsTable(Array.isArray(actions) ? actions : []);
+
+  } catch (err) {
+    console.error('Error cargando trámites de RRHH:', err);
+  }
+}
+
+// Render Tabla de Solicitudes y Radicados
+function renderHRRequestsTable(requests) {
+  hrRequestsTableBody.innerHTML = '';
+  if (requests.length === 0) {
+    hrRequestsTableBody.innerHTML = `
+      <tr>
+        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">
+          No hay solicitudes o radicados radicados por los funcionarios actualmente.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  requests.forEach(r => {
+    const tr = document.createElement('tr');
+    const createdDate = new Date(r.createdAt).toLocaleDateString('es-CO');
+
+    let datesText = 'N/A';
+    if (r.startDate && r.endDate) {
+      datesText = `${new Date(r.startDate).toLocaleDateString('es-CO')} al ${new Date(r.endDate).toLocaleDateString('es-CO')}`;
+    } else if (r.startDate) {
+      datesText = `Desde ${new Date(r.startDate).toLocaleDateString('es-CO')}`;
+    }
+
+    let statusBadge = '<span class="badge-status badge-pending">🟡 PENDIENTE</span>';
+    if (r.status === 'APROBADO') {
+      statusBadge = '<span class="badge-status badge-approved">🟢 APROBADO</span>';
+    } else if (r.status === 'RECHAZADO') {
+      statusBadge = '<span class="badge-status badge-rejected">🔴 RECHAZADO</span>';
+    }
+
+    const empName = r.employee?.name || r.employeeId;
+    const empEmail = r.employee?.email || '';
+
+    tr.innerHTML = `
+      <td><span class="radicado-tag">${r.radicado}</span></td>
+      <td style="font-size: 12px; color: var(--text-muted);">${createdDate}</td>
+      <td><strong>${empName}</strong><br><small style="color: var(--text-muted); font-size: 11px;">${empEmail}</small></td>
+      <td><span class="badge" style="font-size: 11px;">${r.type}</span></td>
+      <td style="font-size: 12px;">${datesText}</td>
+      <td style="max-width: 200px; font-size: 13px;">${r.reason}</td>
+      <td>${statusBadge}</td>
+      <td style="font-size: 12px; color: #94a3b8; max-width: 180px;">${r.adminNotes || '<em>Pendiente por dictamen</em>'}</td>
+      <td>
+        ${r.status === 'PENDIENTE' ? `
+          <button class="btn-primary" style="padding: 6px 10px; font-size: 12px; background: #3b82f6;" onclick="openResolveModal('${r.id}')">
+            Revisar & Resolver ⚖️
+          </button>
+        ` : `
+          <button class="btn-goto-3d" style="padding: 4px 8px; font-size: 11px; background: rgba(255,255,255,0.08);" onclick="openResolveModal('${r.id}')">
+            Ver Dictamen 📄
+          </button>
+        `}
+      </td>
+    `;
+    hrRequestsTableBody.appendChild(tr);
+  });
+}
+
+// Render Historial de Acciones Disciplinarias
+function renderHRActionsTable(actions) {
+  hrActionsTableBody.innerHTML = '';
+  if (actions.length === 0) {
+    hrActionsTableBody.innerHTML = `
+      <tr>
+        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+          No se registran llamados de atención, memorandos o despidos en la base de datos.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  actions.forEach(a => {
+    const tr = document.createElement('tr');
+    const dateStr = new Date(a.createdAt || a.effectiveDate).toLocaleDateString('es-CO');
+
+    let typeBadge = `<span class="badge-status badge-status-leave">${a.type}</span>`;
+    if (a.type === 'DESPIDO') {
+      typeBadge = `<span class="badge-status badge-status-terminated">🛑 DESPIDO</span>`;
+    } else if (a.type === 'MEMORANDO') {
+      typeBadge = `<span class="badge-status badge-pending">⚠️ MEMORANDO</span>`;
+    } else if (a.type === 'REINTEGRO') {
+      typeBadge = `<span class="badge-status badge-approved">✅ REINTEGRO</span>`;
+    }
+
+    const empName = a.employee?.name || a.employeeName || a.employeeEmail || a.employeeId;
+
+    tr.innerHTML = `
+      <td style="font-size: 12px; color: var(--text-muted);">${dateStr}</td>
+      <td><strong>${empName}</strong></td>
+      <td>${typeBadge}</td>
+      <td>
+        <strong>${a.title}</strong>
+        <p style="font-size: 12px; color: #cbd5e1; margin-top: 4px;">${a.description}</p>
+      </td>
+      <td style="font-size: 12px; color: var(--text-muted);">${a.createdBy || 'Recursos Humanos'}</td>
+    `;
+    hrActionsTableBody.appendChild(tr);
+  });
+}
+
+// 7. Modal de Resolución de Solicitud (Aprobar o Rechazar)
+window.openResolveModal = function(requestId) {
+  const req = currentRequests.find(r => r.id === requestId);
+  if (!req) return;
+
+  resolveRequestId.value = req.id;
+  resolveModalTitle.textContent = `Radicado: ${req.radicado}`;
+  resolveEmployeeName.textContent = req.employee?.name || req.employeeId;
+  resolveEmployeeEmail.textContent = req.employee?.email || '';
+  resolveType.textContent = req.type;
+  resolveReason.textContent = req.reason;
+
+  let datesText = 'No aplica rango específico';
+  if (req.startDate && req.endDate) {
+    datesText = `${new Date(req.startDate).toLocaleDateString('es-CO')} al ${new Date(req.endDate).toLocaleDateString('es-CO')}`;
+  } else if (req.startDate) {
+    datesText = `Desde ${new Date(req.startDate).toLocaleDateString('es-CO')}`;
+  }
+  resolvePeriod.textContent = datesText;
+
+  resolveAdminNotes.value = req.adminNotes || '';
+  modalResolveRequest.classList.remove('hidden');
+};
+
+closeResolveModalBtn.addEventListener('click', () => modalResolveRequest.classList.add('hidden'));
+
+async function resolveRequestSubmit(status) {
+  const id = resolveRequestId.value;
+  const notes = resolveAdminNotes.value.trim();
+
+  if (!notes) {
+    alert('Por favor escribe un dictamen u observación oficial de RRHH para sustentar la decisión.');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/companies/${currentCompanyId}/hr/requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, adminNotes: notes })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      modalResolveRequest.classList.add('hidden');
+      alert(`¡Solicitud ${status} con éxito!\nDictamen registrado oficialmente en la base de datos.`);
+      await loadDashboardData(currentCompanyId);
+    } else {
+      alert(data.error || 'Error resolviendo la solicitud');
+    }
+  } catch (err) {
+    alert('Error conectando con el servidor');
+  }
+}
+
+btnApproveRequest.addEventListener('click', () => resolveRequestSubmit('APROBADO'));
+btnRejectRequest.addEventListener('click', () => resolveRequestSubmit('RECHAZADO'));
+
+// 8. Modal de Acciones Disciplinarias (Despidos, Memorandos, Suspensiones)
+openHRActionModalBtn.addEventListener('click', () => {
+  formHRAction.reset();
+  modalHRAction.classList.remove('hidden');
+});
+
+closeHRActionModalBtn.addEventListener('click', () => modalHRAction.classList.add('hidden'));
+
+window.openSanctionModal = function(email) {
+  formHRAction.reset();
+  actionEmployeeSelect.value = email;
+  actionTypeSelect.value = 'DESPIDO';
+  modalHRAction.classList.remove('hidden');
+};
+
+window.openRehireModal = function(email) {
+  formHRAction.reset();
+  actionEmployeeSelect.value = email;
+  actionTypeSelect.value = 'REINTEGRO';
+  actionTitle.value = 'Reincorporación Laboral y Restablecimiento de Credenciales';
+  actionDescription.value = 'El funcionario es reintegrado formalmente a sus funciones con acceso pleno a la sede virtual 3D.';
+  modalHRAction.classList.remove('hidden');
+};
+
+formHRAction.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const employeeEmail = actionEmployeeSelect.value;
+  const type = actionTypeSelect.value;
+  const title = actionTitle.value.trim();
+  const description = actionDescription.value.trim();
+
+  if (type === 'DESPIDO') {
+    const confirmFire = confirm(`⚠️ ¿CONFIRMAS EL DESPIDO DE ${employeeEmail}?\n\nAl ejecutar esta acción:\n1. El funcionario quedará marcado como DESPEDIDO en PostgreSQL.\n2. Su carné de acceso será revocado.\n3. Si está conectado en la oficina 3D, será expulsado inmediatamente.`);
+    if (!confirmFire) return;
+  }
+
+  try {
+    const res = await fetch(`/api/companies/${currentCompanyId}/hr/actions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeEmail,
+        type,
+        title,
+        description,
+        createdBy: 'Recursos Humanos'
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      modalHRAction.classList.add('hidden');
+      formHRAction.reset();
+      alert(`¡Resolución de ${type} ejecutada y notificada exitosamente!`);
+      await loadDashboardData(currentCompanyId);
+    } else {
+      alert(data.error || 'Error ejecutando resolución');
+    }
+  } catch (err) {
+    alert('Error conectando con el servidor');
+  }
+});
+
+// 9. Acciones Generales: Copiar accesos, Crear Dependencias, etc.
 btnCopyEmployeeInvite.addEventListener('click', () => {
   if (!currentCompanyId) return;
   const inviteLink = `${window.location.origin}/?company=${currentCompanyId}`;
@@ -218,7 +569,6 @@ btnCopyEmployeeInvite.addEventListener('click', () => {
   });
 });
 
-// Copiar ficha de acceso de un empleado individual
 window.copyEmployeeCard = function(empName, empEmail, empPass) {
   const companyName = currentCompanyData ? currentCompanyData.name : 'tu empresa';
   const accessLink = `${window.location.origin}/?company=${currentCompanyId}`;
@@ -238,7 +588,6 @@ Ingresa, elige el color de tu avatar y conéctate con tus compañeros. 🚀`;
   });
 };
 
-// 6. ACCIONES MODALES: DEPENDENCIAS & EMPLEADOS
 openNewDeptModalBtn.addEventListener('click', () => modalNewDept.classList.remove('hidden'));
 closeNewDeptBtn.addEventListener('click', () => modalNewDept.classList.add('hidden'));
 

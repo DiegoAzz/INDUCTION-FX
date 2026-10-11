@@ -324,7 +324,12 @@ app.post('/api/companies/:companyId/employee-login', async (req, res) => {
     return res.status(404).json({ error: 'Funcionario no registrado en esta empresa. Solicita acceso a tu administrador de RRHH.' });
   }
   if (result.error) {
-    return res.status(401).json({ error: result.error });
+    return res.status(401).json({
+      error: result.error,
+      terminated: result.terminated || false,
+      suspended: result.suspended || false,
+      terminationReason: result.terminationReason || null
+    });
   }
 
   res.json({ success: true, employee: result.employee, company: result.company });
@@ -419,6 +424,139 @@ app.delete('/api/companies/:companyId/employees/:email', async (req, res) => {
 });
 
 // ----------------------------------------------------------------
+// APIS DE RECURSOS HUMANOS Y TRÁMITES CORPORATIVOS (SIMULADOR DE VIDA REAL)
+// ----------------------------------------------------------------
+
+// 1. Listar solicitudes formales de la empresa
+app.get('/api/companies/:companyId/hr/requests', async (req, res) => {
+  const { companyId } = req.params;
+  try {
+    const requests = await dbManager.getHRRequests(companyId);
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: 'Error obteniendo solicitudes de RRHH' });
+  }
+});
+
+// 2. Crear solicitud formal (Permiso, Vacaciones, Incapacidad, Descargo)
+app.post('/api/companies/:companyId/hr/requests', async (req, res) => {
+  const { companyId } = req.params;
+  const { employeeEmail, type, title, reason, startDate, endDate } = req.body;
+
+  if (!employeeEmail || !type || !title || !reason) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios para radicar la solicitud' });
+  }
+
+  try {
+    const newReq = await dbManager.createHRRequest({
+      companySlug: companyId,
+      employeeEmail: employeeEmail.trim().toLowerCase(),
+      type,
+      title,
+      reason,
+      startDate,
+      endDate
+    });
+
+    if (!newReq) {
+      return res.status(404).json({ error: 'No se encontró el funcionario o la empresa' });
+    }
+
+    // Notificar en tiempo real al canal de la empresa
+    io.to(companyId).emit('hr:new_request', newReq);
+
+    res.status(201).json({ success: true, request: newReq });
+  } catch (err) {
+    console.error('Error creando radicado RRHH:', err);
+    res.status(500).json({ error: 'Error procesando radicado' });
+  }
+});
+
+// 3. Resolver solicitud formal (Aprobar o Rechazar con Justificación)
+app.patch('/api/companies/:companyId/hr/requests/:requestId', async (req, res) => {
+  const { companyId, requestId } = req.params;
+  const { status, adminNotes } = req.body;
+
+  if (!status || !['APROBADO', 'RECHAZADO'].includes(status.toUpperCase())) {
+    return res.status(400).json({ error: 'Estado inválido. Debe ser APROBADO o RECHAZADO' });
+  }
+
+  try {
+    const resolved = await dbManager.resolveHRRequest(companyId, requestId, status, adminNotes);
+    if (!resolved) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    // Notificar resolución en tiempo real al empleado y sala
+    io.to(companyId).emit('hr:request_resolved', resolved);
+
+    res.json({ success: true, request: resolved });
+  } catch (err) {
+    console.error('Error resolviendo trámite:', err);
+    res.status(500).json({ error: 'Error resolviendo solicitud' });
+  }
+});
+
+// 4. Listar acciones disciplinarias / legales (Despidos, memorandos, etc.)
+app.get('/api/companies/:companyId/hr/actions', async (req, res) => {
+  const { companyId } = req.params;
+  try {
+    const actions = await dbManager.getHRActions(companyId);
+    res.json(actions);
+  } catch (err) {
+    res.status(500).json({ error: 'Error obteniendo historial laboral' });
+  }
+});
+
+// 5. Ejecutar acción disciplinaria formal (Despido, Memorando, Suspensión, Reintegro)
+app.post('/api/companies/:companyId/hr/actions', async (req, res) => {
+  const { companyId } = req.params;
+  const { employeeEmail, type, title, description, createdBy } = req.body;
+
+  if (!employeeEmail || !type || !description) {
+    return res.status(400).json({ error: 'Empleado, tipo y motivo requeridos' });
+  }
+
+  try {
+    const action = await dbManager.executeHRAction({
+      companySlug: companyId,
+      employeeEmail: employeeEmail.trim().toLowerCase(),
+      type,
+      title: title || `Resolución de ${type}`,
+      description,
+      createdBy: createdBy || 'Recursos Humanos'
+    });
+
+    if (!action) {
+      return res.status(404).json({ error: 'Funcionario no encontrado' });
+    }
+
+    // Si es un despido o suspensión, revocar acceso y desconectar de inmediato en el 3D
+    if (type.toUpperCase() === 'DESPIDO' || type.toUpperCase() === 'SUSPENSION') {
+      for (const sId in activePlayers) {
+        if (activePlayers[sId].companyId === companyId && activePlayers[sId].email === employeeEmail.toLowerCase()) {
+          io.to(sId).emit('player:expelled', {
+            type: type.toUpperCase(),
+            reason: description,
+            date: new Date().toLocaleDateString('es-CO')
+          });
+          io.sockets.sockets.get(sId)?.disconnect(true);
+          delete activePlayers[sId];
+          io.to(companyId).emit('player:leave', sId);
+        }
+      }
+    }
+
+    io.to(companyId).emit('hr:action_executed', action);
+
+    res.status(201).json({ success: true, action });
+  } catch (err) {
+    console.error('Error ejecutando acción RRHH:', err);
+    res.status(500).json({ error: 'Error registrando acción disciplinaria' });
+  }
+});
+
+// ----------------------------------------------------------------
 // SOCKET.IO SALAS Y MULTIJUGADOR
 // ----------------------------------------------------------------
 const activePlayers = {};
@@ -446,6 +584,17 @@ io.on('connection', (socket) => {
     socket.join(companyId);
 
     const email = data.email || `${(data.name || 'user').replace(/\s+/g, '.').toLowerCase()}@${company.id}.com`;
+
+    const existingEmp = company.employees && company.employees[email.toLowerCase()];
+    if (existingEmp && existingEmp.status === 'TERMINATED') {
+      socket.emit('player:expelled', {
+        type: 'DESPIDO',
+        reason: existingEmp.terminationReason || 'Contrato laboral finalizado',
+        date: existingEmp.terminationDate || new Date().toLocaleDateString('es-CO')
+      });
+      return;
+    }
+
     const employee = await dbManager.createEmployee(companyId, {
       name: data.name,
       email: email,

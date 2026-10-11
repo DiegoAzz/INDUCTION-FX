@@ -35,6 +35,22 @@ const chatView = document.getElementById('chatView');
 const privateDmView = document.getElementById('privateDmView');
 const tasksView = document.getElementById('tasksView');
 const adminView = document.getElementById('adminView');
+const tabHRBtn = document.getElementById('tabHRBtn');
+const hrView = document.getElementById('hrView');
+const employeeRequestsList = document.getElementById('employeeRequestsList');
+const myRequestsCountBadge = document.getElementById('myRequestsCountBadge');
+
+// Modales HR y Notificaciones
+const hrRequestModal = document.getElementById('hrRequestModal');
+const openHRDeskBtn = document.getElementById('openHRDeskBtn');
+const btnOpenNewRequestModal = document.getElementById('btnOpenNewRequestModal');
+const closeHRRequestModalBtn = document.getElementById('closeHRRequestModalBtn');
+const formHRRequest = document.getElementById('formHRRequest');
+
+const terminatedNoticeModal = document.getElementById('terminatedNoticeModal');
+const termReasonText = document.getElementById('termReasonText');
+const termDateText = document.getElementById('termDateText');
+const closeTermNoticeBtn = document.getElementById('closeTermNoticeBtn');
 
 const chatForm = document.getElementById('chatForm');
 const chatInput = document.getElementById('chatInput');
@@ -574,6 +590,10 @@ employeeLoginForm.addEventListener('submit', async (e) => {
 
     const data = await res.json();
     if (!data.success) {
+      if (data.terminated) {
+        showTerminationNotice(data.terminationReason);
+        return;
+      }
       alert(data.error || 'Credenciales de funcionario incorrectas.');
       return;
     }
@@ -592,10 +612,24 @@ employeeLoginForm.addEventListener('submit', async (e) => {
     }));
 
     loginPlayer(company.id, emp.name, emp.email, emp.role || 'Funcionario', emp.department || 'General', color);
+    loadEmployeeHRRequests();
   } catch (err) {
     alert('Error al autenticar funcionario con el servidor.');
   }
 });
+
+function showTerminationNotice(reason, date) {
+  if (termReasonText) termReasonText.textContent = reason || 'Terminación de contrato laboral';
+  if (termDateText) termDateText.textContent = date || new Date().toLocaleDateString('es-CO');
+  if (terminatedNoticeModal) terminatedNoticeModal.classList.remove('hidden');
+}
+
+if (closeTermNoticeBtn) {
+  closeTermNoticeBtn.addEventListener('click', () => {
+    localStorage.removeItem('induction_session');
+    location.reload();
+  });
+}
 
 function loginPlayer(companyId, name, email, role, department, color) {
   socket.emit('player:join', { companyId, name, email, role, department, color });
@@ -1211,8 +1245,8 @@ npcCloseBtn.addEventListener('click', () => npcModal.classList.add('hidden'));
 // TABS DE LA BARRA LATERAL (CHAT, PRIVADO, INDUCCIÓN)
 // ----------------------------------------------------
 function switchTab(activeBtn, activeView) {
-  const allTabs = [tabChatBtn, tabPrivateDmBtn, tabTasksBtn, tabAdminBtn].filter(Boolean);
-  const allViews = [chatView, privateDmView, tasksView, adminView].filter(Boolean);
+  const allTabs = [tabChatBtn, tabPrivateDmBtn, tabTasksBtn, tabAdminBtn, tabHRBtn].filter(Boolean);
+  const allViews = [chatView, privateDmView, tasksView, adminView, hrView].filter(Boolean);
 
   allTabs.forEach(b => b.classList.remove('active'));
   allViews.forEach(v => v.classList.remove('active'));
@@ -1224,6 +1258,143 @@ function switchTab(activeBtn, activeView) {
 if (tabChatBtn) tabChatBtn.addEventListener('click', () => switchTab(tabChatBtn, chatView));
 if (tabPrivateDmBtn) tabPrivateDmBtn.addEventListener('click', () => switchTab(tabPrivateDmBtn, privateDmView));
 if (tabTasksBtn) tabTasksBtn.addEventListener('click', () => switchTab(tabTasksBtn, tasksView));
+if (tabHRBtn) tabHRBtn.addEventListener('click', () => {
+  switchTab(tabHRBtn, hrView);
+  loadEmployeeHRRequests();
+});
+
+// ----------------------------------------------------
+// MÓDULO DE TALENTO HUMANO & TRÁMITES (VIDA REAL)
+// ----------------------------------------------------
+function openHRModal() {
+  if (hrRequestModal) hrRequestModal.classList.remove('hidden');
+}
+
+if (openHRDeskBtn) openHRDeskBtn.addEventListener('click', openHRModal);
+if (btnOpenNewRequestModal) btnOpenNewRequestModal.addEventListener('click', openHRModal);
+if (closeHRRequestModalBtn) closeHRRequestModalBtn.addEventListener('click', () => {
+  if (hrRequestModal) hrRequestModal.classList.add('hidden');
+});
+
+if (formHRRequest) {
+  formHRRequest.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const session = JSON.parse(localStorage.getItem('induction_session') || '{}');
+    if (!session.companyId || !session.email) {
+      alert('Debes ingresar con tus credenciales de funcionario para radicar un trámite.');
+      return;
+    }
+
+    const type = document.getElementById('hrReqType').value;
+    const title = document.getElementById('hrReqTitle').value.trim();
+    const startDate = document.getElementById('hrReqStartDate').value;
+    const endDate = document.getElementById('hrReqEndDate').value;
+    const reason = document.getElementById('hrReqReason').value.trim();
+
+    try {
+      const res = await fetch(`/api/companies/${session.companyId}/hr/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeEmail: session.email,
+          type,
+          title,
+          reason,
+          startDate,
+          endDate
+        })
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        hrRequestModal.classList.add('hidden');
+        formHRRequest.reset();
+        alert(`🎉 ¡TRÁMITE RADICADO FORMALMENTE!\n\nNúmero Oficial: ${data.request.radicado}\nTipo: ${data.request.type}\nAsunto: ${data.request.title}\n\nHa sido remitido a la Dirección de Recursos Humanos. Recibirás respuesta oficial.`);
+        loadEmployeeHRRequests();
+        if (tabHRBtn && hrView) switchTab(tabHRBtn, hrView);
+      } else {
+        alert(data.error || 'Error al radicar solicitud');
+      }
+    } catch (err) {
+      alert('Error de conexión al enviar el trámite');
+    }
+  });
+}
+
+async function loadEmployeeHRRequests() {
+  const session = JSON.parse(localStorage.getItem('induction_session') || '{}');
+  if (!session.companyId || !session.email) return;
+
+  try {
+    const res = await fetch(`/api/companies/${session.companyId}/hr/requests`);
+    const allReqs = await res.json();
+    if (!Array.isArray(allReqs)) return;
+
+    const myReqs = allReqs.filter(r => (r.employee?.email || '').toLowerCase() === session.email.toLowerCase() || r.employeeId === session.email);
+    if (myRequestsCountBadge) myRequestsCountBadge.textContent = myReqs.length;
+
+    if (!employeeRequestsList) return;
+    employeeRequestsList.innerHTML = '';
+
+    if (myReqs.length === 0) {
+      employeeRequestsList.innerHTML = `
+        <div style="text-align: center; color: var(--text-muted); font-size: 12px; padding: 20px;">
+          No has radicado trámites o permisos aún. Haz clic arriba en "+ Diligenciar Trámite".
+        </div>
+      `;
+      return;
+    }
+
+    myReqs.forEach(r => {
+      const card = document.createElement('div');
+      card.style.background = 'rgba(255,255,255,0.04)';
+      card.style.border = '1px solid var(--border)';
+      card.style.borderRadius = '8px';
+      card.style.padding = '10px';
+
+      let statusBadge = '<span class="badge-status badge-pending">🟡 PENDIENTE</span>';
+      if (r.status === 'APROBADO') statusBadge = '<span class="badge-status badge-approved">🟢 APROBADO</span>';
+      else if (r.status === 'RECHAZADO') statusBadge = '<span class="badge-status badge-rejected">🔴 RECHAZADO</span>';
+
+      const dateStr = new Date(r.createdAt).toLocaleDateString('es-CO');
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span class="radicado-tag" style="font-size: 11px;">${r.radicado}</span>
+          <span style="font-size: 11px; color: var(--text-muted);">${dateStr}</span>
+        </div>
+        <div style="font-weight: 700; font-size: 13px; margin: 2px 0;">${r.title}</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Tipo: ${r.type}</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          ${statusBadge}
+        </div>
+        ${r.adminNotes ? `
+          <div style="background: rgba(0,0,0,0.25); border-left: 3px solid #60a5fa; padding: 6px 8px; margin-top: 8px; border-radius: 4px; font-size: 11px; color: #cbd5e1;">
+            <strong>Dictamen RRHH:</strong> ${r.adminNotes}
+          </div>
+        ` : ''}
+      `;
+      employeeRequestsList.appendChild(card);
+    });
+  } catch (err) {
+    console.error('Error cargando solicitudes del empleado:', err);
+  }
+}
+
+// Notificaciones en tiempo real vía socket
+socket.on('player:expelled', (data) => {
+  gameContainer.classList.add('hidden');
+  showTerminationNotice(data.reason, data.date);
+});
+
+socket.on('hr:request_resolved', (req) => {
+  const session = JSON.parse(localStorage.getItem('induction_session') || '{}');
+  if (session.email && (req.employee?.email || '').toLowerCase() === session.email.toLowerCase()) {
+    alert(`📢 RESOLUCIÓN OFICIAL DE RRHH\n\nTu trámite ${req.radicado} (${req.title}) ha sido ${req.status}.\n\nDictamen oficial: ${req.adminNotes || 'Procesado formalmente.'}`);
+    loadEmployeeHRRequests();
+  }
+});
+
 if (tabAdminBtn) {
   tabAdminBtn.addEventListener('click', () => {
     switchTab(tabAdminBtn, adminView);

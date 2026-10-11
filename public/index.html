@@ -96,7 +96,10 @@
         <span>💡 <strong>[ E ]</strong> para hablar con NPCs</span>
       </div>
 
-      <div class="header-actions">
+        <!-- Botón para Mesa de RRHH y Trámites -->
+        <button id="openHRDeskBtn" class="btn-toggle-sidebar" style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; color: #34d399;" title="Oficina de Talento Humano y Diligenciamiento de Permisos">
+          📑 <span class="hide-mobile">Trámites RRHH</span>
+        </button>
         <!-- Botón para ir al Super Admin -->
         <a href="/superadmin.html" class="btn-toggle-sidebar" style="text-decoration: none;" title="Portal Super Administrador">
           👑 <span class="hide-mobile">SuperAdmin</span>
@@ -189,6 +192,7 @@
           <button class="tab-btn active" id="tabChatBtn">💬 General</button>
           <button class="tab-btn" id="tabPrivateDmBtn">🔒 Privado</button>
           <button class="tab-btn" id="tabTasksBtn">📋 Inducción</button>
+          <button class="tab-btn" id="tabHRBtn">📑 Trámites</button>
         </div>
 
         <!-- Vista de Chat General -->
@@ -232,6 +236,22 @@
             <p>Habla con los NPCs de cada área. Tu avance queda guardado automáticamente.</p>
           </div>
           <ul class="task-list" id="taskList"></ul>
+        </div>
+
+        <!-- Vista de Trámites y Radicados RRHH -->
+        <div id="hrView" class="tab-content">
+          <div class="proximity-banner" style="background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.2); color: #34d399;">
+            <span class="icon">🏛️</span>
+            <small>Oficina de Talento Humano: Radica tus solicitudes de la vida real.</small>
+          </div>
+          <button id="btnOpenNewRequestModal" class="btn-primary" style="background: #10b981; margin: 12px 0; width: 100%; font-size: 13px; padding: 10px;">
+            + Diligenciar Trámite / Permiso 📝
+          </button>
+          <div style="font-size: 13px; font-weight: 700; margin-bottom: 8px; color: #93c5fd; display: flex; justify-content: space-between;">
+            <span>Mis Radicados:</span>
+            <span id="myRequestsCountBadge" style="background: rgba(255,255,255,0.1); padding: 1px 6px; border-radius: 10px; font-size: 11px;">0</span>
+          </div>
+          <div id="employeeRequestsList" style="display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: calc(100vh - 350px);"></div>
         </div>
       </aside>
     </main>
@@ -285,9 +305,85 @@
     </div>
   </div>
 
+  <!-- Modal Diligenciamiento Formal de Trámites RRHH -->
+  <div id="hrRequestModal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Mesa de Talento Humano</span>
+        <h2>Radicar Trámite Corporativo</h2>
+        <p>Diligencia tu solicitud como en la vida real. Se asignará un radicado oficial ante la administración.</p>
+      </div>
+
+      <form id="formHRRequest">
+        <div class="form-group">
+          <label for="hrReqType">Tipo de Trámite Laboral</label>
+          <select id="hrReqType" required>
+            <option value="PERMISO">🩺 Permiso Laboral / Cita Médica</option>
+            <option value="VACACIONES">🏖️ Solicitud Formal de Vacaciones</option>
+            <option value="INCAPACIDAD">🏥 Reporte de Incapacidad Médica</option>
+            <option value="CALAMIDAD">⚠️ Calamidad Doméstica</option>
+            <option value="ESTUDIO">🎓 Permiso de Estudio / Capacitación</option>
+            <option value="DESCARGOS">📝 Descargos / Justificación de Ausencia</option>
+            <option value="OTRO">📄 Otro Requerimiento Laboral</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="hrReqTitle">Asunto o Título del Trámite</label>
+          <input type="text" id="hrReqTitle" placeholder="Ej. Solicitud de permiso por cita médica especialista" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-group">
+            <label for="hrReqStartDate">Fecha Inicio</label>
+            <input type="date" id="hrReqStartDate" required>
+          </div>
+          <div class="form-group">
+            <label for="hrReqEndDate">Fecha Fin</label>
+            <input type="date" id="hrReqEndDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="hrReqReason">Exposición de Motivos y Justificación Detallada</label>
+          <textarea id="hrReqReason" rows="4" placeholder="Explica detalladamente las razones de tu solicitud, horarios y soporte..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" style="background: #10b981; width: 100%; padding: 12px; margin-top: 8px;">
+          Radicar Trámite Oficialmente 🚀
+        </button>
+        <button type="button" id="closeHRRequestModalBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">
+          Cancelar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Oficial de Desvinculación / Expulsión Laboral -->
+  <div id="terminatedNoticeModal" class="modal-overlay hidden">
+    <div class="modal-card termination-card">
+      <div class="termination-stamp">DESVINCULADO</div>
+      <h2 style="color: #f87171; font-size: 19px; font-weight: 800;">NOTIFICACIÓN FORMAL DE TERMINACIÓN LABORAL</h2>
+      <p style="margin-top: 10px; font-size: 14px; color: #cbd5e1;">Tu relación laboral con la empresa ha sido finalizada formalmente por la Dirección de Recursos Humanos.</p>
+      
+      <div style="background: rgba(0,0,0,0.3); border-left: 4px solid #ef4444; padding: 12px; margin: 16px 0; text-align: left; font-size: 13px;">
+        <p><strong>Causal / Dictamen:</strong> <span id="termReasonText" style="color: #fca5a5;">Terminación de contrato</span></p>
+        <p style="margin-top: 4px;"><strong>Fecha efectiva:</strong> <span id="termDateText" style="color: #cbd5e1;">Hoy</span></p>
+      </div>
+
+      <p style="font-size: 12px; color: #94a3b8; line-height: 1.5;">
+        Tus credenciales y gafete de acceso a las instalaciones físicas y a esta sede virtual han sido revocados en el sistema central.
+      </p>
+
+      <button type="button" id="closeTermNoticeBtn" class="btn-logout" style="width: 100%; margin-top: 16px; background: #ef4444; color: #fff; font-weight: 700;">
+        Aceptar y Salir de la Plataforma
+      </button>
+    </div>
+  </div>
+
   <div id="audioStreamsContainer" style="display: none;"></div>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="game3d.js?v=3.0.0"></script>
+  <script src="game3d.js?v=4.0.0"></script>
 </body>
 </html>

@@ -81,10 +81,20 @@
       </div>
     </div>
 
+    <!-- Pestañas de Navegación del Dashboard -->
+    <div class="dash-nav-tabs">
+      <button id="tabBtnDepts" class="dash-tab-btn active">🏢 Dependencias 3D</button>
+      <button id="tabBtnEmployees" class="dash-tab-btn">👥 Nómina de Funcionarios</button>
+      <button id="tabBtnHR" class="dash-tab-btn">
+        ⚖️ Talento Humano & Trámites (Vida Real)
+        <span id="hrPendingBadge" class="dash-tab-badge">0</span>
+      </button>
+    </div>
+
     <!-- Contenido Principal -->
     <div class="dash-sections">
       <!-- 1. Gestión de Dependencias (Roblox Builder) -->
-      <section class="dash-box">
+      <section id="sectionDepts" class="dash-box">
         <div class="dash-box-header">
           <div>
             <h3>🏢 Dependencias y Oficinas en el Mundo 3D</h3>
@@ -97,11 +107,11 @@
       </section>
 
       <!-- 2. Nómina de Funcionarios Registrados -->
-      <section class="dash-box">
+      <section id="sectionEmployees" class="dash-box hidden">
         <div class="dash-box-header">
           <div>
             <h3>👥 Nómina de Funcionarios Registrados</h3>
-            <p style="font-size: 12px; color: var(--text-muted);">Gestiona los accesos y roles de los empleados en la base de datos PostgreSQL.</p>
+            <p style="font-size: 12px; color: var(--text-muted);">Gestiona los accesos, roles y estado laboral de los empleados.</p>
           </div>
           <button id="openNewEmpModalBtn" class="btn-primary" style="width: auto; padding: 10px 18px; background: #10b981;">+ Registrar Funcionario</button>
         </div>
@@ -115,10 +125,64 @@
                 <th>Contraseña Acceso</th>
                 <th>Cargo / Rol</th>
                 <th>Dependencia</th>
+                <th>Estado Laboral</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody id="employeesTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3. Talento Humano & Trámites Corporativos (Vida Real) -->
+      <section id="sectionHR" class="dash-box hidden">
+        <div class="dash-box-header">
+          <div>
+            <h3>⚖️ Talento Humano, Permisos y Decisiones Laborales</h3>
+            <p style="font-size: 12px; color: var(--text-muted);">Gestiona solicitudes de empleados, aprueba permisos/vacaciones y ejecuta acciones disciplinarias con impacto real.</p>
+          </div>
+          <button id="openHRActionModalBtn" class="btn-primary" style="width: auto; padding: 10px 18px; background: #ef4444;">⚖️ Emitir Acción Laboral (Despido / Memorando)</button>
+        </div>
+
+        <!-- Subsección A: Solicitudes Formales -->
+        <h4 style="font-size: 15px; margin-bottom: 12px; color: #93c5fd; display: flex; align-items: center; gap: 8px;">
+          📬 Bandeja de Solicitudes y Radicados Formales
+        </h4>
+        <div class="data-table-wrapper" style="margin-bottom: 30px;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Radicado</th>
+                <th>Fecha</th>
+                <th>Funcionario</th>
+                <th>Trámite</th>
+                <th>Periodo Solicitado</th>
+                <th>Motivo / Justificación</th>
+                <th>Estado</th>
+                <th>Dictamen RRHH</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="hrRequestsTableBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Subsección B: Historial Disciplinario y Despidos -->
+        <h4 style="font-size: 15px; margin-bottom: 12px; color: #fca5a5; display: flex; align-items: center; gap: 8px;">
+          📜 Historial de Resoluciones Laborales, Despidos y Memorandos
+        </h4>
+        <div class="data-table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Funcionario</th>
+                <th>Acción</th>
+                <th>Título / Justificación Legal</th>
+                <th>Emitido Por</th>
+              </tr>
+            </thead>
+            <tbody id="hrActionsTableBody"></tbody>
           </table>
         </div>
       </section>
@@ -225,6 +289,84 @@
     </div>
   </div>
 
-  <script src="dashboard.js"></script>
+  <!-- Modal Resolver Solicitud Formal RRHH -->
+  <div id="modalResolveRequest" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">Resolución Oficial RRHH</span>
+        <h2 id="resolveModalTitle">Radicado: RAD-2026-0000</h2>
+        <p id="resolveModalSubtitle">Revisión de solicitud formal de funcionario.</p>
+      </div>
+
+      <div style="background: var(--bg-surface); padding: 14px; border-radius: 10px; margin-bottom: 16px; font-size: 13px; line-height: 1.5;">
+        <p><strong>Funcionario:</strong> <span id="resolveEmployeeName">Nombre</span> (<span id="resolveEmployeeEmail">email</span>)</p>
+        <p><strong>Tipo:</strong> <span id="resolveType" class="badge" style="margin: 0 4px;">TIPO</span></p>
+        <p><strong>Periodo:</strong> <span id="resolvePeriod">Fechas</span></p>
+        <p style="margin-top: 8px;"><strong>Motivo expuesto:</strong></p>
+        <p id="resolveReason" style="color: #cbd5e1; font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; margin-top: 4px;"></p>
+      </div>
+
+      <form id="formResolveRequest">
+        <input type="hidden" id="resolveRequestId">
+        <div class="form-group">
+          <label for="resolveAdminNotes">Dictamen / Observaciones Oficiales de la Empresa</label>
+          <textarea id="resolveAdminNotes" rows="3" placeholder="Ej. Aprobado según políticas de bienestar corporativo. Se solicita entrega de puesto previa..." required></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px;">
+          <button type="button" id="btnApproveRequest" class="btn-primary" style="background: #10b981; padding: 12px;">Aprobar Trámite ✅</button>
+          <button type="button" id="btnRejectRequest" class="btn-delete" style="padding: 12px; font-size: 14px; font-weight: 700;">Rechazar Trámite ❌</button>
+        </div>
+        <button type="button" id="closeResolveModalBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">Cerrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Emitir Acción Laboral / Disciplinaria (Despido / Memorando) -->
+  <div id="modalHRAction" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 520px;">
+      <div class="modal-header">
+        <span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;">Resolución Disciplinaria / Legal</span>
+        <h2>Emitir Decisión Laboral</h2>
+        <p>Ejecuta una acción sobre un funcionario. Los despidos revocan el acceso inmediatamente en la sede 3D.</p>
+      </div>
+
+      <form id="formHRAction">
+        <div class="form-group">
+          <label for="actionEmployeeSelect">Seleccionar Funcionario</label>
+          <select id="actionEmployeeSelect" required></select>
+        </div>
+
+        <div class="form-group">
+          <label for="actionTypeSelect">Tipo de Acción Legal / Disciplinaria</label>
+          <select id="actionTypeSelect" required>
+            <option value="DESPIDO">🛑 DESPIDO (Terminación de contrato y revocación de acceso 3D)</option>
+            <option value="MEMORANDO">⚠️ MEMORANDO (Llamado de atención formal a la hoja de vida)</option>
+            <option value="SUSPENSION">⏸️ SUSPENSIÓN (Suspensión temporal de labores)</option>
+            <option value="REINTEGRO">✅ REINTEGRO (Reactivación de funcionario despedido/suspendido)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="actionTitle">Título o Asunto Oficial</label>
+          <input type="text" id="actionTitle" placeholder="Ej. Notificación de terminación unilateral de contrato laboral" required>
+        </div>
+
+        <div class="form-group">
+          <label for="actionDescription">Motivo / Justificación Legal Detallada</label>
+          <textarea id="actionDescription" rows="4" placeholder="Explica las causales, hechos o motivos legales del despido o sanción..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" style="background: #ef4444; width: 100%; padding: 12px; margin-top: 8px;">
+          ⚖️ Ejecutar Resolución Formal
+        </button>
+        <button type="button" id="closeHRActionModalBtn" class="btn-logout" style="width: 100%; margin-top: 8px;">
+          Cancelar
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="dashboard.js?v=4.0.0"></script>
 </body>
 </html>

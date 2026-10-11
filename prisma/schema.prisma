@@ -21,6 +21,8 @@ model Company {
 
   departments            Department[]
   employees              Employee[]
+  hrRequests             HRRequest[]
+  hrActions              HRAction[]
 
   @@map("companies")
 }
@@ -55,16 +57,62 @@ model Employee {
   email        String
   password     String       @default("123456")
   role         String       @default("Funcionario")
-  color        String       @default("#3B82F6")
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  status             String       @default("ACTIVE") // ACTIVE, VACATION, ON_LEAVE, SUSPENDED, TERMINATED
+  terminationReason  String?      @db.Text
+  terminationDate    DateTime?
+  color              String       @default("#3B82F6")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
-  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  department   Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  progress     OnboardingProgress[]
+  company            Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  progress           OnboardingProgress[]
+  hrRequests         HRRequest[]
+  hrActions          HRAction[]
 
   @@unique([companyId, email])
   @@map("employees")
+}
+
+// 4. Solicitudes Formales de RRHH (Trámites de Vida Real)
+model HRRequest {
+  id           String    @id @default(uuid())
+  radicado     String    @unique
+  companyId    String
+  employeeId   String
+  type         String    // PERMISO, VACACIONES, INCAPACIDAD, DESCARGOS, OTRO
+  title        String
+  reason       String    @db.Text
+  startDate    DateTime?
+  endDate      DateTime?
+  status       String    @default("PENDIENTE") // PENDIENTE, APROBADO, RECHAZADO
+  adminNotes   String?   @db.Text
+  resolvedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("hr_requests")
+}
+
+// 5. Acciones Disciplinarias y Legales de RRHH (Despidos, Memorandos, Suspensiones)
+model HRAction {
+  id            String    @id @default(uuid())
+  companyId     String
+  employeeId    String
+  type          String    // DESPIDO, MEMORANDO, SUSPENSION, FELICITACION
+  title         String
+  description   String    @db.Text
+  effectiveDate DateTime  @default(now())
+  createdBy     String    @default("Recursos Humanos")
+  createdAt     DateTime  @default(now())
+
+  company       Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("hr_actions")
 }
 
 // 4. Progreso y Misiones de Inducción

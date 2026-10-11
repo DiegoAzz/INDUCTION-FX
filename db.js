@@ -110,6 +110,9 @@ const dbManager = {
               email: e.email,
               password: e.password || '123456',
               role: e.role,
+              status: e.status || 'ACTIVE',
+              terminationReason: e.terminationReason || null,
+              terminationDate: e.terminationDate || null,
               department: c.departments.find(d => d.id === e.departmentId)?.name || 'General',
               color: e.color || '#3B82F6'
             };
@@ -516,11 +519,315 @@ const dbManager = {
     const employee = comp.employees[email];
     if (!employee) return null;
 
+    if (employee.status === 'TERMINATED') {
+      return {
+        error: `Has sido desvinculado(a) formalmente de la empresa. Motivo: "${employee.terminationReason || 'Terminación de contrato laboral'}". El acceso a la sede virtual ha sido revocado por Recursos Humanos.`,
+        terminated: true,
+        terminationReason: employee.terminationReason
+      };
+    }
+
+    if (employee.status === 'SUSPENDED') {
+      return {
+        error: 'Tu usuario se encuentra en suspensión disciplinaria temporal. Comunícate con la oficina de Recursos Humanos.',
+        suspended: true
+      };
+    }
+
     if (employee.password && employee.password !== password) {
       return { error: 'Contraseña incorrecta de funcionario' };
     }
 
     return { success: true, employee, company: comp };
+  },
+
+  // 11. Crear Solicitud Formal de RRHH (Radicado de Vida Real)
+  async createHRRequest({ companySlug, employeeEmail, type, title, reason, startDate, endDate }) {
+    const radicado = `RAD-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          const emp = await prisma.employee.findUnique({
+            where: {
+              companyId_email: {
+                companyId: comp.id,
+                email: employeeEmail.toLowerCase()
+              }
+            }
+          });
+          if (emp) {
+            const req = await prisma.hRRequest.create({
+              data: {
+                radicado,
+                companyId: comp.id,
+                employeeId: emp.id,
+                type: type.toUpperCase(),
+                title: title.trim(),
+                reason: reason.trim(),
+                startDate: startDate ? new Date(startDate) : null,
+                endDate: endDate ? new Date(endDate) : null,
+                status: 'PENDIENTE'
+              },
+              include: {
+                employee: {
+                  select: { name: true, email: true, role: true }
+                }
+              }
+            });
+            return req;
+          }
+        }
+      } catch (err) {
+        console.error('[DB Error] createHRRequest postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const comp = fallback.companies[companySlug];
+    if (comp) {
+      comp.hrRequests = comp.hrRequests || [];
+      const emp = comp.employees[employeeEmail.toLowerCase()];
+      const newReq = {
+        id: 'req-' + Date.now(),
+        radicado,
+        companyId: companySlug,
+        employeeId: emp?.id || employeeEmail,
+        employee: {
+          name: emp?.name || employeeEmail,
+          email: employeeEmail,
+          role: emp?.role || 'Funcionario'
+        },
+        type: type.toUpperCase(),
+        title: title.trim(),
+        reason: reason.trim(),
+        startDate: startDate || null,
+        endDate: endDate || null,
+        status: 'PENDIENTE',
+        adminNotes: null,
+        createdAt: new Date().toISOString()
+      };
+      comp.hrRequests.unshift(newReq);
+      saveFallbackData(fallback);
+      return newReq;
+    }
+    return null;
+  },
+
+  // 12. Listar Solicitudes de RRHH por Empresa
+  async getHRRequests(companySlug) {
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          return await prisma.hRRequest.findMany({
+            where: { companyId: comp.id },
+            include: {
+              employee: {
+                select: { id: true, name: true, email: true, role: true }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+        }
+      } catch (err) {
+        console.error('[DB Error] getHRRequests postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const comp = fallback.companies[companySlug];
+    return comp?.hrRequests || [];
+  },
+
+  // 13. Resolver Solicitud de RRHH (Aprobar o Rechazar con Justificación)
+  async resolveHRRequest(companySlug, requestId, status, adminNotes) {
+    if (usePostgres) {
+      try {
+        const req = await prisma.hRRequest.update({
+          where: { id: requestId },
+          data: {
+            status: status.toUpperCase(),
+            adminNotes: adminNotes || null,
+            resolvedAt: new Date()
+          },
+          include: { employee: true }
+        });
+
+        // Efectos en la vida real sobre el estado del funcionario
+        if (status.toUpperCase() === 'APROBADO') {
+          if (req.type === 'VACACIONES') {
+            await prisma.employee.update({
+              where: { id: req.employeeId },
+              data: { status: 'VACATION' }
+            });
+          } else if (req.type === 'PERMISO' || req.type === 'INCAPACIDAD') {
+            await prisma.employee.update({
+              where: { id: req.employeeId },
+              data: { status: 'ON_LEAVE' }
+            });
+          }
+        }
+        return req;
+      } catch (err) {
+        console.error('[DB Error] resolveHRRequest postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const comp = fallback.companies[companySlug];
+    if (comp && comp.hrRequests) {
+      const r = comp.hrRequests.find(x => x.id === requestId || x.radicado === requestId);
+      if (r) {
+        r.status = status.toUpperCase();
+        r.adminNotes = adminNotes || null;
+        r.resolvedAt = new Date().toISOString();
+
+        const emp = comp.employees[r.employee?.email || r.employeeId];
+        if (emp && status.toUpperCase() === 'APROBADO') {
+          if (r.type === 'VACACIONES') emp.status = 'VACATION';
+          else if (r.type === 'PERMISO') emp.status = 'ON_LEAVE';
+        }
+        saveFallbackData(fallback);
+        return r;
+      }
+    }
+    return null;
+  },
+
+  // 14. Ejecutar Acción Disciplinaria / Legal (Despido, Memorando, Suspensión)
+  async executeHRAction({ companySlug, employeeEmail, type, title, description, createdBy }) {
+    const actType = type.toUpperCase();
+
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          const emp = await prisma.employee.findUnique({
+            where: {
+              companyId_email: {
+                companyId: comp.id,
+                email: employeeEmail.toLowerCase()
+              }
+            }
+          });
+          if (emp) {
+            const action = await prisma.hRAction.create({
+              data: {
+                companyId: comp.id,
+                employeeId: emp.id,
+                type: actType,
+                title: title.trim(),
+                description: description.trim(),
+                createdBy: createdBy || 'Recursos Humanos'
+              }
+            });
+
+            // Aplicar consecuencias de la vida real al empleado
+            if (actType === 'DESPIDO') {
+              await prisma.employee.update({
+                where: { id: emp.id },
+                data: {
+                  status: 'TERMINATED',
+                  terminationReason: description.trim(),
+                  terminationDate: new Date()
+                }
+              });
+            } else if (actType === 'SUSPENSION') {
+              await prisma.employee.update({
+                where: { id: emp.id },
+                data: { status: 'SUSPENDED' }
+              });
+            } else if (actType === 'REINTEGRO') {
+              await prisma.employee.update({
+                where: { id: emp.id },
+                data: {
+                  status: 'ACTIVE',
+                  terminationReason: null,
+                  terminationDate: null
+                }
+              });
+            }
+
+            return action;
+          }
+        }
+      } catch (err) {
+        console.error('[DB Error] executeHRAction postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const comp = fallback.companies[companySlug];
+    if (comp) {
+      comp.hrActions = comp.hrActions || [];
+      const emp = comp.employees[employeeEmail.toLowerCase()];
+      const newAction = {
+        id: 'act-' + Date.now(),
+        companyId: companySlug,
+        employeeEmail: employeeEmail.toLowerCase(),
+        employeeName: emp?.name || employeeEmail,
+        type: actType,
+        title: title.trim(),
+        description: description.trim(),
+        createdBy: createdBy || 'Recursos Humanos',
+        createdAt: new Date().toISOString()
+      };
+      comp.hrActions.unshift(newAction);
+
+      if (emp) {
+        if (actType === 'DESPIDO') {
+          emp.status = 'TERMINATED';
+          emp.terminationReason = description.trim();
+          emp.terminationDate = new Date().toISOString();
+        } else if (actType === 'SUSPENSION') {
+          emp.status = 'SUSPENDED';
+        } else if (actType === 'REINTEGRO') {
+          emp.status = 'ACTIVE';
+          emp.terminationReason = null;
+          emp.terminationDate = null;
+        }
+      }
+
+      saveFallbackData(fallback);
+      return newAction;
+    }
+    return null;
+  },
+
+  // 15. Listar Acciones Disciplinarias / Historial Laboral
+  async getHRActions(companySlug) {
+    if (usePostgres) {
+      try {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ slug: companySlug }, { id: companySlug }] }
+        });
+        if (comp) {
+          return await prisma.hRAction.findMany({
+            where: { companyId: comp.id },
+            include: {
+              employee: {
+                select: { id: true, name: true, email: true, role: true }
+              }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+        }
+      } catch (err) {
+        console.error('[DB Error] getHRActions postgres:', err);
+      }
+    }
+
+    const fallback = loadFallbackData();
+    const comp = fallback.companies[companySlug];
+    return comp?.hrActions || [];
   }
 };
 
