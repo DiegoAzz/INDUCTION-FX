@@ -120,15 +120,9 @@
       </div>
 
       <div class="controls-hint">
-        <span>🎮 Muévete con <strong>W, A, S, D</strong> o <strong>Flechas</strong></span>
-        <span>💡 Acércate a los NPCs y pulsa <strong>[ E ]</strong> para hablar</span>
-      </div>
-
-      <div class="voice-controls">
-        <button id="toggleMicBtn" class="btn-voice" title="Activar/Silenciar Micrófono">
-          <span id="micIcon">🎤</span>
-          <span id="micText">Voz Desactivada</span>
-        </button>
+        <span>🎮 <strong>W, A, S, D</strong> para caminar</span>
+        <span>📻 Mantén <strong>[ ESPACIO ]</strong> para hablar por radio</span>
+        <span>💡 <strong>[ E ]</strong> para hablar con NPCs</span>
       </div>
 
       <div class="header-actions">
@@ -147,6 +141,21 @@
         <!-- Indicador de acción interactiva -->
         <div id="interactionPrompt" class="interaction-prompt hidden">
           Presiona <kbd>E</kbd> para hablar con <strong id="promptTargetName">el NPC</strong>
+        </div>
+
+        <!-- Botón flotante Walkie-Talkie Push-to-Talk (estilo radio taxi) -->
+        <div class="ptt-container">
+          <button id="pttButton" class="btn-ptt" type="button">
+            <span class="ptt-wave"></span>
+            <span class="ptt-icon">📻</span>
+            <span class="ptt-label">MANTÉN PRESIONADO PARA HABLAR (ESPACIO)</span>
+          </button>
+        </div>
+
+        <!-- Indicador de transmisión activa -->
+        <div id="transmittingIndicator" class="transmitting-indicator hidden">
+          <span class="live-dot"></span>
+          <span>TRANSMITIENDO EN VIVO POR RADIO...</span>
         </div>
 
         <!-- Alerta de Sala de Juntas -->

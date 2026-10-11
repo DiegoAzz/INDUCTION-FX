@@ -559,7 +559,29 @@ socket.on('player:moved', (data) => {
   }
 });
 
-socket.on('player:left', (id) => {
+socket.on('player:voice_updated', (data) => {
+  if (players[data.id]) {
+    players[data.id].isSpeaking = data.isSpeaking;
+    const mesh = playerMeshes[data.id];
+    if (mesh) {
+      let wave = mesh.getObjectByName('voiceWave');
+      if (data.isSpeaking) {
+        if (!wave) {
+          const waveGeo = new THREE.RingGeometry(1.2, 1.45, 32);
+          const waveMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide });
+          wave = new THREE.Mesh(waveGeo, waveMat);
+          wave.name = 'voiceWave';
+          wave.rotation.x = -Math.PI / 2;
+          wave.position.y = 0.05;
+          mesh.add(wave);
+        }
+        wave.visible = true;
+      } else if (wave) {
+        wave.visible = false;
+      }
+    }
+  }
+});
   if (players[id]) {
     addChatMessage({
       senderName: '🏢 Sede 3D',
@@ -631,29 +653,129 @@ function updatePlayerCount() {
 }
 
 // ----------------------------------------------------
-// AUDIO ESPACIAL WEBRTC
+// AUDIO WALKIE-TALKIE PUSH-TO-TALK (ESTILO RADIO TAXI)
 // ----------------------------------------------------
-toggleMicBtn.addEventListener('click', async () => {
+const pttButton = document.getElementById('pttButton');
+const transmittingIndicator = document.getElementById('transmittingIndicator');
+let isTransmitting = false;
+
+// Sintetizador Web Audio para efectos de sonido de Radio Walkie-Talkie (Bip de inicio y cierre)
+let audioCtx = null;
+function playRadioBeep(isStart = true) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (isStart) {
+      // Bip de inicio (agudo ascendente)
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    } else {
+      // Bip de fin (descendente corto)
+      osc.frequency.setValueAtTime(1100, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(650, audioCtx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    }
+  } catch (e) {
+    // Si el navegador bloquea audio antes de interacción
+  }
+}
+
+// Inicializar micrófono en segundo plano silenciado
+async function ensureMicrophone() {
   if (!localStream) {
     try {
       localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      isMuted = false;
-      toggleMicBtn.classList.add('active');
-      micIcon.textContent = '🔊';
-      micText.textContent = 'Micrófono Activo';
+      // Mantener tracks en silencio por defecto hasta pulsar PTT
+      localStream.getAudioTracks().forEach(t => t.enabled = false);
 
+      // Conectar P2P con todos los usuarios presentes
       for (const id in players) {
         if (id !== selfId) initiatePeerConnection(id, true);
       }
     } catch (err) {
-      alert('Por favor autoriza el permiso de micrófono en tu navegador.');
+      console.warn('Permiso de micrófono no otorgado aún:', err);
     }
-  } else {
-    isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-    toggleMicBtn.classList.toggle('active', !isMuted);
-    micIcon.textContent = isMuted ? '🎤' : '🔊';
-    micText.textContent = isMuted ? 'Voz Silenciada' : 'Micrófono Activo';
+  }
+}
+
+// Iniciar transmisión de radio (PULSAR)
+async function startTransmitting() {
+  if (isTransmitting) return;
+  await ensureMicrophone();
+
+  if (localStream) {
+    isTransmitting = true;
+    localStream.getAudioTracks().forEach(t => t.enabled = true);
+    pttButton.classList.add('transmitting');
+    transmittingIndicator.classList.remove('hidden');
+    playRadioBeep(true);
+
+    socket.emit('player:voice_state', { isMuted: false, isSpeaking: true });
+  }
+}
+
+// Detener transmisión de radio (SOLTAR)
+function stopTransmitting() {
+  if (!isTransmitting) return;
+  isTransmitting = false;
+
+  if (localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = false);
+  }
+
+  pttButton.classList.remove('transmitting');
+  transmittingIndicator.classList.add('hidden');
+  playRadioBeep(false);
+
+  socket.emit('player:voice_state', { isMuted: true, isSpeaking: false });
+}
+
+// Eventos de Mouse / Touch en el botón Walkie-Talkie
+pttButton.addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  startTransmitting();
+});
+window.addEventListener('mouseup', () => stopTransmitting());
+
+pttButton.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  startTransmitting();
+}, { passive: false });
+window.addEventListener('touchend', () => stopTransmitting());
+
+// Eventos de Teclado: Barra Espaciadora o Tecla 'V' (Push-to-Talk)
+window.addEventListener('keydown', (e) => {
+  if (document.activeElement === chatInput || 
+      document.activeElement === adminNpcName || 
+      document.activeElement === adminNpcDept || 
+      document.activeElement === adminNpcInfo) {
+    return;
+  }
+
+  // Espacio o V para Walkie-Talkie
+  if ((e.code === 'Space' || e.code === 'KeyV') && !e.repeat) {
+    e.preventDefault();
+    startTransmitting();
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'Space' || e.code === 'KeyV') {
+    e.preventDefault();
+    stopTransmitting();
   }
 });
 

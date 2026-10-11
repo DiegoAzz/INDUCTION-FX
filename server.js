@@ -250,6 +250,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Estado de Radio / Walkie-Talkie
+  socket.on('player:voice_state', (data) => {
+    const player = activePlayers[socket.id];
+    if (player) {
+      player.isSpeaking = data.isSpeaking;
+      socket.to(player.companyId).emit('player:voice_updated', {
+        id: socket.id,
+        isSpeaking: data.isSpeaking
+      });
+    }
+  });
+
   // WebRTC Audio Signaling
   socket.on('webrtc:signal', (data) => {
     if (data.target && activePlayers[data.target]) {
