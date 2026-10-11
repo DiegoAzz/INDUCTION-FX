@@ -205,6 +205,21 @@ const whiteFurnitureMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roug
 const counterWoodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.4 }); // Madera nogal mostrador
 const cafeteriaGreenMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 }); // Mueble verde cafetería
 
+// ----------------------------------------------------
+// SISTEMA DE COLISIONES SÓLIDAS 2D/3D (AABB & OBSTÁCULOS)
+// ----------------------------------------------------
+const officeColliders = [];
+
+function registerCollider(minX, maxX, minZ, maxZ) {
+  officeColliders.push({ minX, maxX, minZ, maxZ });
+}
+
+function registerBoxCollider(centerX, centerZ, widthX, depthZ) {
+  const halfW = widthX / 2;
+  const halfD = depthZ / 2;
+  registerCollider(centerX - halfW, centerX + halfW, centerZ - halfD, centerZ + halfD);
+}
+
 // Constructor de Mamparas de Cristal Templado con Marcos de Aluminio
 function createGlassPartition(x, z, length, rotationY = 0, height = 4.8) {
   const group = new THREE.Group();
@@ -235,6 +250,15 @@ function createGlassPartition(x, z, length, rotationY = 0, height = 4.8) {
   group.add(postR);
 
   scene.add(group);
+
+  // Registrar Colisión Sólida de la mampara de vidrio
+  const thickness = 0.6;
+  if (Math.abs(rotationY) < 0.1 || Math.abs(rotationY - Math.PI) < 0.1) {
+    registerBoxCollider(x, z, length, thickness);
+  } else {
+    registerBoxCollider(x, z, thickness, length);
+  }
+
   return group;
 }
 
@@ -245,6 +269,9 @@ function createWall(x, z, width, depth, height = 5.5) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
+
+  // Registrar Colisión Sólida de la pared
+  registerBoxCollider(x, z, width, depth);
   return mesh;
 }
 
@@ -294,6 +321,9 @@ const tableTop = new THREE.Mesh(
 tableTop.position.y = 1.38;
 tableTop.castShadow = true;
 boardRoom.add(tableTop);
+
+// Registrar Colisión Sólida de la Mesa de Juntas (Centro 0, -22)
+registerBoxCollider(0, -22, 14.5, 5.6);
 
 // Franja Pasacables de Acero Cromado Central
 const cableTray = new THREE.Mesh(new THREE.BoxGeometry(11, 0.17, 0.8), chromeMat);
@@ -394,6 +424,9 @@ receptionDesk.position.set(0, 0.9, 0);
 receptionDesk.castShadow = true;
 lobbyGroup.add(receptionDesk);
 
+// Registrar colisión del mostrador de recepción en el mundo (22, 22)
+registerBoxCollider(22, 22, 7.8, 2.5);
+
 const receptionTop = new THREE.Mesh(
   new THREE.BoxGeometry(7.8, 0.14, 2.4),
   whiteFurnitureMat
@@ -433,6 +466,10 @@ function createOfficeSofa(x, z, rotY = 0) {
 lobbyGroup.add(createOfficeSofa(-6, -6, Math.PI / 4));
 lobbyGroup.add(createOfficeSofa(-6, 4, -Math.PI / 4));
 
+// Registrar colisión de sofás de lobby
+registerBoxCollider(16, 16, 4.0, 3.0);
+registerBoxCollider(16, 26, 4.0, 3.0);
+
 // Mesa de centro en Lobby
 const coffeeTable = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 1.6), darkFrameMat);
 coffeeTable.position.set(-6, 0.3, -1);
@@ -451,6 +488,9 @@ const kitchenBar = new THREE.Mesh(new THREE.BoxGeometry(9.0, 1.7, 1.8), cafeteri
 kitchenBar.position.set(0, 0.85, 0);
 kitchenBar.castShadow = true;
 cafeGroup.add(kitchenBar);
+
+// Registrar colisión de la barra de cafetería en (-22, 22)
+registerBoxCollider(-22, 22, 9.4, 2.2);
 
 const kitchenTop = new THREE.Mesh(new THREE.BoxGeometry(9.2, 0.14, 2.0), whiteFurnitureMat);
 kitchenTop.position.set(0, 1.75, 0);
@@ -537,6 +577,10 @@ function buildNpcWorld(npcs) {
     const color = (npc.color && typeof npc.color === 'string') ? npc.color : '#3B82F6';
     const x = (typeof npc.x === 'number' && !isNaN(npc.x)) ? npc.x : 0;
     const z = (typeof npc.z === 'number' && !isNaN(npc.z)) ? npc.z : 0;
+
+    // Registrar colisión del escritorio (ancho 6.6, fondo 3.2) y mampara de cristal (ancho 9.8, fondo 0.5)
+    registerBoxCollider(x, z, 6.8, 3.4);
+    registerBoxCollider(x, z - 3.8, 9.8, 0.6);
 
     const stationGroup = new THREE.Group();
 
@@ -2291,14 +2335,41 @@ function updatePlayerPhysics(delta) {
     }
   }
 
+  // Función de prueba de colisión con radio del jugador
+  function checkCollision(px, pz, radius = 0.6) {
+    for (let i = 0; i < officeColliders.length; i++) {
+      const c = officeColliders[i];
+      // Comprobar si el círculo del jugador se solapa con el rectángulo AABB expandido
+      if (px + radius > c.minX && px - radius < c.maxX &&
+          pz + radius > c.minZ && pz - radius < c.maxZ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   if (isMoving) {
     if (moveX !== 0 && moveZ !== 0 && !isJoystickActive) {
       moveX *= 0.7071;
       moveZ *= 0.7071;
     }
 
-    const nextX = Math.max(-33, Math.min(33, playerMesh.position.x + moveX));
-    const nextZ = Math.max(-33, Math.min(33, playerMesh.position.z + moveZ));
+    const currentX = playerMesh.position.x;
+    const currentZ = playerMesh.position.z;
+
+    // Desplazamiento independiente en X y Z con deslizamiento suave por paredes (Wall Sliding)
+    let nextX = Math.max(-36, Math.min(36, currentX + moveX));
+    let nextZ = Math.max(-36, Math.min(36, currentZ + moveZ));
+
+    // 1. Probar mover en X
+    if (checkCollision(nextX, currentZ, 0.55)) {
+      nextX = currentX; // Colisión en X: deslizar por el muro
+    }
+
+    // 2. Probar mover en Z
+    if (checkCollision(nextX, nextZ, 0.55)) {
+      nextZ = currentZ; // Colisión en Z: deslizar por el muro
+    }
 
     playerMesh.position.x = nextX;
     playerMesh.position.z = nextZ;
@@ -2311,7 +2382,7 @@ function updatePlayerPhysics(delta) {
       y: 0,
       z: nextZ,
       rotationY: targetAngle,
-      inMeetingRoom: (nextZ < -10 && Math.abs(nextX) < 12)
+      inMeetingRoom: (nextZ < -13 && Math.abs(nextX) < 12)
     });
   }
 
