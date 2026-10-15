@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Avatares Ejecutivos de Empresa</title>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+  <style>
+    body { margin: 0; background: #0b1329; overflow: hidden; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+  </style>
+</head>
+<body>
+<script>
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0f172a);
+
+  const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 2.0, 5.2);
+  camera.lookAt(0, 1.5, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.35;
+  document.body.appendChild(renderer.domElement);
+
+  const ambLight = new THREE.AmbientLight(0xffffff, 1.2);
+  scene.add(ambLight);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+  dirLight.position.set(5, 10, 6);
+  dirLight.castShadow = true;
+  scene.add(dirLight);
+
+  const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.0);
+  rimLight.position.set(-5, 6, -5);
+  scene.add(rimLight);
+
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(24, 24),
+    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  const grid = new THREE.GridHelper(24, 24, 0x38bdf8, 0x334155);
+  grid.position.y = 0.01;
+  scene.add(grid);
+
+  function createExecutiveFaceTexture(gender = 'male') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 512);
+
+    function drawEye(cx, cy, isLeft) {
+      // Fondo blanco del ojo
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, 44, 52, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Contorno fino
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+
+      // Iris
+      ctx.fillStyle = gender === 'female' ? '#1e3a5f' : '#334155';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 3 : -3), cy, 30, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupila negra
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 3 : -3), cy, 18, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Brillo blanco nítido
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx + (isLeft ? 12 : 5), cy - 9, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pestaña superior
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = gender === 'female' ? 7 : 5;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 8, 44, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+
+      // Ceja formal ejecutiva
+      ctx.fillStyle = '#1c1917';
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(cx - 38, cy - 70, 76, 16, 8);
+      else ctx.rect(cx - 38, cy - 70, 76, 16);
+      ctx.fill();
+    }
+
+    drawEye(170, 215, true);
+    drawEye(342, 215, false);
+
+    // Sonrisa profesional
+    ctx.strokeStyle = gender === 'female' ? '#be123c' : '#881337';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(256, 310, 36, 0.22 * Math.PI, 0.78 * Math.PI);
+    ctx.stroke();
+
+    // Rubor suave
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.16)';
+    ctx.beginPath();
+    ctx.arc(130, 290, 28, 0, Math.PI * 2);
+    ctx.arc(382, 290, 28, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }
+
+  function createNameplateTexture(name, role) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createLinearGradient(0, 0, 512, 0);
+    grad.addColorStop(0, 'rgba(15, 23, 42, 0.95)');
+    grad.addColorStop(1, 'rgba(30, 41, 59, 0.90)');
+    ctx.fillStyle = grad;
+    if (ctx.roundRect) ctx.roundRect(12, 12, 488, 104, 52);
+    else ctx.rect(12, 12, 488, 104);
+    ctx.fill();
+
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.fillStyle = '#10b981';
+    ctx.shadowColor = '#10b981';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(62, 64, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px sans-serif';
+    ctx.fillText((name || 'FUNCIONARIO').toUpperCase(), 94, 56);
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '600 22px sans-serif';
+    ctx.fillText((role || 'CORPORATIVO').toUpperCase(), 94, 88);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  function buildExecutiveAvatar(config = {}) {
+    const {
+      suitColor = 0x1e293b,
+      tieColor = 0x2563eb,
+      gender = 'male',
+      hairColor = 0x1c1917,
+      name = 'DIEGO ZUÑIGA',
+      role = 'Director de Operaciones'
+    } = config;
+
+    const root = new THREE.Group();
+    const char = new THREE.Group();
+    root.add(char);
+
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.8, 32),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4 })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.02;
+    root.add(shadow);
+
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xdfa384, roughness: 0.65 });
+    const suitMat = new THREE.MeshStandardMaterial({ color: suitColor, roughness: 0.45 });
+    const shirtMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+    const tieMat = new THREE.MeshStandardMaterial({ color: tieColor, roughness: 0.35 });
+    const darkShoesMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.25 });
+    const beltMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.4 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.25 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: hairColor, roughness: 0.6 });
+    const leatherBriefcaseMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.35 });
+
+    // PIERNAS
+    const legL = new THREE.Group();
+    legL.position.set(-0.25, 1.10, 0);
+    char.add(legL);
+
+    const legR = new THREE.Group();
+    legR.position.set(0.25, 1.10, 0);
+    char.add(legR);
+
+    function buildExecutiveLeg(parent) {
+      const trouser = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.165, 0.90, 16), suitMat);
+      trouser.position.y = -0.45;
+      trouser.castShadow = true;
+      parent.add(trouser);
+
+      const shoeGroup = new THREE.Group();
+      shoeGroup.position.set(0, -0.90, 0.06);
+
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.07, 0.54), darkShoesMat);
+      sole.position.y = -0.04;
+      sole.castShadow = true;
+      shoeGroup.add(sole);
+
+      const upper = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.14, 0.46), darkShoesMat);
+      upper.position.set(0, 0.05, 0.02);
+      upper.castShadow = true;
+      shoeGroup.add(upper);
+
+      const toe = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.115, 0.23, 14), darkShoesMat);
+      toe.rotation.z = Math.PI / 2;
+      toe.position.set(0, 0.02, 0.23);
+      shoeGroup.add(toe);
+
+      parent.add(shoeGroup);
+    }
+
+    buildExecutiveLeg(legL);
+    buildExecutiveLeg(legR);
+
+    // CADERA
+    const pelvis = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.37, 0.24, 18), suitMat);
+    pelvis.position.y = 1.22;
+    pelvis.castShadow = true;
+    char.add(pelvis);
+
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(0.41, 0.41, 0.08, 18), beltMat);
+    belt.position.y = 1.32;
+    char.add(belt);
+
+    const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.05), goldMat);
+    buckle.position.set(0, 1.32, 0.40);
+    char.add(buckle);
+
+    // TORSO
+    const blazer = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.40, 0.88, 18), suitMat);
+    blazer.position.y = 1.76;
+    blazer.castShadow = true;
+    char.add(blazer);
+
+    const shirtChest = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.76, 0.14), shirtMat);
+    shirtChest.position.set(0, 1.84, 0.37);
+    char.add(shirtChest);
+
+    const lapelL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.74, 0.08), suitMat);
+    lapelL.position.set(-0.16, 1.82, 0.41);
+    lapelL.rotation.z = -0.15;
+    char.add(lapelL);
+
+    const lapelR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.74, 0.08), suitMat);
+    lapelR.position.set(0.16, 1.82, 0.41);
+    lapelR.rotation.z = 0.15;
+    char.add(lapelR);
+
+    if (gender === 'male') {
+      const tieKnot = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.08, 0.05), tieMat);
+      tieKnot.position.set(0, 2.14, 0.42);
+      char.add(tieKnot);
+
+      const tieBody = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.55, 0.04), tieMat);
+      tieBody.position.set(0, 1.82, 0.43);
+      char.add(tieBody);
+    } else {
+      const brooch = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.03), goldMat);
+      brooch.position.set(-0.22, 1.95, 0.44);
+      char.add(brooch);
+    }
+
+    const buttonTop = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12), goldMat);
+    buttonTop.rotation.x = Math.PI / 2;
+    buttonTop.position.set(0, 1.62, 0.44);
+    char.add(buttonTop);
+
+    const buttonBottom = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.02, 12), goldMat);
+    buttonBottom.rotation.x = Math.PI / 2;
+    buttonBottom.position.set(0, 1.48, 0.43);
+    char.add(buttonBottom);
+
+    // Gafete corporativo
+    const badgeGroup = new THREE.Group();
+    badgeGroup.position.set(0, 1.68, 0.47);
+    const lanyard = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.38, 8), new THREE.MeshBasicMaterial({ color: 0x0284c7 }));
+    lanyard.position.y = 0.17;
+    badgeGroup.add(lanyard);
+    const badgeCard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.24, 0.02), shirtMat);
+    badgeCard.castShadow = true;
+    badgeGroup.add(badgeCard);
+    const badgePhoto = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.025), new THREE.MeshBasicMaterial({ color: tieColor }));
+    badgePhoto.position.set(0, 0.04, 0.005);
+    badgeGroup.add(badgePhoto);
+    char.add(badgeGroup);
+
+    // BRAZOS
+    const armL = new THREE.Group();
+    armL.position.set(-0.55, 2.10, 0);
+    char.add(armL);
+
+    const armR = new THREE.Group();
+    armR.position.set(0.55, 2.10, 0);
+    char.add(armR);
+
+    const sleeveL = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.145, 0.74, 14), suitMat);
+    sleeveL.position.y = -0.37;
+    sleeveL.castShadow = true;
+    armL.add(sleeveL);
+
+    const cuffL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.125, 0.06, 14), shirtMat);
+    cuffL.position.y = -0.73;
+    armL.add(cuffL);
+
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.10, 14, 14), skinMat);
+    handL.position.y = -0.79;
+    handL.castShadow = true;
+    armL.add(handL);
+
+    const sleeveR = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.145, 0.74, 14), suitMat);
+    sleeveR.position.y = -0.37;
+    sleeveR.castShadow = true;
+    armR.add(sleeveR);
+
+    const cuffR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.125, 0.06, 14), shirtMat);
+    cuffR.position.y = -0.73;
+    armR.add(cuffR);
+
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.10, 14, 14), skinMat);
+    handR.position.y = -0.79;
+    handR.castShadow = true;
+    armR.add(handR);
+
+    // Maletín ejecutivo
+    const briefcase = new THREE.Group();
+    briefcase.position.set(0.15, -0.80, 0.10);
+
+    const caseBody = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.36, 0.12), leatherBriefcaseMat);
+    caseBody.castShadow = true;
+    briefcase.add(caseBody);
+
+    const lockL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.13), goldMat);
+    lockL.position.set(-0.14, 0.06, 0);
+    briefcase.add(lockL);
+
+    const lockR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.05, 0.13), goldMat);
+    lockR.position.set(0.14, 0.06, 0);
+    briefcase.add(lockR);
+
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 6, 12, Math.PI), goldMat);
+    handle.position.set(0, 0.18, 0);
+    briefcase.add(handle);
+
+    armR.add(briefcase);
+
+    // CABEZA
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.22, 14), skinMat);
+    neck.position.y = 2.26;
+    char.add(neck);
+
+    const headGroup = new THREE.Group();
+    headGroup.position.set(0, 2.65, 0);
+    char.add(headGroup);
+
+    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.48, 24, 24), skinMat);
+    headMesh.scale.set(1.0, 1.06, 0.98);
+    headMesh.castShadow = true;
+    headGroup.add(headMesh);
+
+    const faceTex = createExecutiveFaceTexture(gender);
+    const facePlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.72, 0.72),
+      new THREE.MeshBasicMaterial({ map: faceTex, transparent: true })
+    );
+    facePlane.position.set(0, -0.01, 0.475);
+    headGroup.add(facePlane);
+
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 10), skinMat);
+    nose.position.set(0, -0.04, 0.48);
+    headGroup.add(nose);
+
+    const earL = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), skinMat);
+    earL.position.set(-0.48, 0, 0);
+    earL.scale.set(0.4, 1, 0.7);
+    headGroup.add(earL);
+
+    const earR = new THREE.Mesh(new THREE.SphereGeometry(0.10, 10, 10), skinMat);
+    earR.position.set(0.48, 0, 0);
+    earR.scale.set(0.4, 1, 0.7);
+    headGroup.add(earR);
+
+    // PEINADO FORMAL
+    const hairGroup = new THREE.Group();
+
+    if (gender === 'female') {
+      const hairCrown = new THREE.Mesh(
+        new THREE.SphereGeometry(0.50, 22, 16, 0, Math.PI * 2, 0, Math.PI / 1.7),
+        hairMat
+      );
+      hairCrown.position.y = 0.08;
+      hairGroup.add(hairCrown);
+
+      const hairSideL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.42), hairMat);
+      hairSideL.position.set(-0.45, -0.15, 0.05);
+      hairGroup.add(hairSideL);
+
+      const hairSideR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.55, 0.42), hairMat);
+      hairSideR.position.set(0.45, -0.15, 0.05);
+      hairGroup.add(hairSideR);
+
+      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 14), hairMat);
+      bun.position.set(0, 0.05, -0.46);
+      hairGroup.add(bun);
+
+    } else {
+      const hairCrown = new THREE.Mesh(
+        new THREE.SphereGeometry(0.50, 22, 16, 0, Math.PI * 2, 0, Math.PI / 1.8),
+        hairMat
+      );
+      hairCrown.position.y = 0.08;
+      hairGroup.add(hairCrown);
+
+      const part = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.12, 0.38), hairMat);
+      part.position.set(0.04, 0.42, 0.16);
+      part.rotation.z = -0.10;
+      hairGroup.add(part);
+
+      const sideburnL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.14), hairMat);
+      sideburnL.position.set(-0.46, -0.05, 0.08);
+      hairGroup.add(sideburnL);
+
+      const sideburnR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.22, 0.14), hairMat);
+      sideburnR.position.set(0.46, -0.05, 0.08);
+      hairGroup.add(sideburnR);
+    }
+
+    headGroup.add(hairGroup);
+
+    // CARTEL
+    const nameTex = createNameplateTexture(name, role);
+    const nameSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: nameTex, transparent: true }));
+    nameSprite.position.set(0, 3.65, 0);
+    nameSprite.scale.set(2.8, 0.7, 1);
+    root.add(nameSprite);
+
+    root.userData = {
+      leftLeg: legL,
+      rightLeg: legR,
+      armL: armL,
+      armR: armR,
+      char: char,
+      head: headGroup,
+      walkTime: 0
+    };
+
+    return root;
+  }
+
+  const exec1 = buildExecutiveAvatar({
+    suitColor: 0x1e3a8a,
+    tieColor: 0xdc2626,
+    gender: 'male',
+    hairColor: 0x1c1917,
+    name: 'DIEGO ZUÑIGA',
+    role: 'Desarrollador Senior'
+  });
+  exec1.position.set(-1.6, 0, 0);
+  scene.add(exec1);
+
+  const exec2 = buildExecutiveAvatar({
+    suitColor: 0x334155,
+    tieColor: 0x0284c7,
+    gender: 'female',
+    hairColor: 0x451a03,
+    name: 'YENIS PARDO',
+    role: 'Directora de RRHH'
+  });
+  exec2.position.set(1.6, 0, 0);
+  scene.add(exec2);
+
+  renderer.render(scene, camera);
+</script>
+</body>
+</html>

@@ -39,6 +39,8 @@ model Department {
   color       String   @default("#3B82F6")
   posX        Float    @default(0)
   posZ        Float    @default(0)
+  profile     String?  @default("gerencia")
+  furniture   String?  @db.Text
   createdAt   DateTime @default(now())
 
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)

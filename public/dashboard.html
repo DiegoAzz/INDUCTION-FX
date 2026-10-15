@@ -215,6 +215,17 @@
           <textarea id="newDeptDesc" rows="3" placeholder="Políticas y funciones clave de esta dependencia..." required></textarea>
         </div>
         <div class="form-group">
+          <label for="newDeptProfile">Perfil de Trabajo / Especialidad</label>
+          <select id="newDeptProfile">
+            <option value="gerencia">💼 Alta Dirección / Gerencia Ejecutiva</option>
+            <option value="desarrollo">💻 Desarrollo de Software / TI</option>
+            <option value="rrhh">⚖️ Recursos Humanos, Jurídica & Nómina</option>
+            <option value="marketing">🎨 Marketing & Diseño Creativo</option>
+            <option value="finanzas">📊 Finanzas, Contabilidad & Operaciones</option>
+            <option value="recepcion">☕ Recepción, Bienestar & Atención al Cliente</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label for="newDeptColor">Color de Alfombra 3D</label>
           <select id="newDeptColor">
             <option value="#8B5CF6">Morado Ejecutivo (#8B5CF6)</option>
@@ -257,6 +268,17 @@
           <label for="editDeptDesc">Diálogo de Bienvenida e Instrucciones (Al Acercarse)</label>
           <textarea id="editDeptDesc" rows="4" placeholder="Escribe aquí el diálogo exacto que el líder dirá cuando un empleado se le acerque en la oficina..." required></textarea>
           <small style="color: var(--text-muted); font-size: 11px;">Este mensaje aparecerá en el globo de diálogo 3D al interactuar con el funcionario.</small>
+        </div>
+        <div class="form-group">
+          <label for="editDeptProfile">Perfil de Trabajo / Especialidad</label>
+          <select id="editDeptProfile">
+            <option value="gerencia">💼 Alta Dirección / Gerencia Ejecutiva</option>
+            <option value="desarrollo">💻 Desarrollo de Software / TI</option>
+            <option value="rrhh">⚖️ Recursos Humanos, Jurídica & Nómina</option>
+            <option value="marketing">🎨 Marketing & Diseño Creativo</option>
+            <option value="finanzas">📊 Finanzas, Contabilidad & Operaciones</option>
+            <option value="recepcion">☕ Recepción, Bienestar & Atención al Cliente</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="editDeptColor">Color de Alfombra y Estación</label>
@@ -484,6 +506,150 @@
           Cancelar
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Estudio de Diseño y Armado de Oficinas 3D (Office Builder) -->
+  <div id="modalOfficeBuilder" class="modal-overlay hidden" style="z-index: 120;">
+    <div class="modal-card" style="max-width: 1280px; width: 96vw; height: 92vh; display: flex; flex-direction: column; padding: 20px; overflow: hidden;">
+      
+      <!-- Encabezado del Constructor -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 14px; margin-bottom: 14px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <span class="badge" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border-color: #8b5cf6;">Estudio de Decoración 3D</span>
+          <div>
+            <h2 id="builderOfficeTitle" style="font-size: 20px; font-weight: 800; color: #fff;">Armar Oficina: <span id="builderDeptName">Área</span></h2>
+            <p id="builderDeptSubtitle" style="font-size: 12px; color: var(--text-muted);">Adecuación de mobiliario interactivo para <span id="builderLeaderName">Líder</span> (<span id="builderLeaderRole">Cargo</span>)</p>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 6px; background: var(--bg-surface); padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <label for="builderProfileSelect" style="font-size: 12px; font-weight: 600; color: #94a3b8;">Perfil:</label>
+            <select id="builderProfileSelect" style="background: transparent; color: #fff; border: none; font-size: 12px; font-weight: bold; outline: none; cursor: pointer;">
+              <option value="gerencia">💼 Alta Dirección / Gerencia</option>
+              <option value="desarrollo">💻 Desarrollo de Software / TI</option>
+              <option value="rrhh">⚖️ Talento Humano & Jurídica</option>
+              <option value="marketing">🎨 Marketing & Creatividad</option>
+              <option value="finanzas">📊 Finanzas & Auditoría</option>
+              <option value="recepcion">☕ Recepción & Bienestar</option>
+            </select>
+          </div>
+
+          <button id="builderAutoEquipBtn" class="btn-primary" style="padding: 7px 14px; font-size: 12px; background: linear-gradient(135deg, #8b5cf6, #3b82f6); display: flex; align-items: center; gap: 6px;" title="Carga automáticamente la combinación de muebles recomendada para este perfil de funcionario">
+            ⚡ Auto-Equipar según Perfil
+          </button>
+
+          <button id="builderClearBtn" class="btn-delete" style="padding: 7px 12px; font-size: 12px;" title="Quitar todos los muebles colocados">
+            🧹 Limpiar
+          </button>
+
+          <button id="builderSaveBtn" class="btn-primary" style="padding: 7px 18px; font-size: 12px; background: #10b981; font-weight: bold;" title="Guardar y reflejar cambios en tiempo real en la sede virtual 3D">
+            💾 Guardar y Aplicar 3D
+          </button>
+
+          <button id="closeOfficeBuilderBtn" class="btn-logout" style="padding: 7px 12px; font-size: 14px;" title="Cerrar diseñador">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Cuerpo del Estudio: 3 Columnas (Catálogo | Plano 2D | Inspector y Resumen) -->
+      <div style="display: flex; flex: 1; gap: 16px; min-height: 0;">
+        
+        <!-- Columna 1: Catálogo de Mobiliario -->
+        <div style="width: 310px; display: flex; flex-direction: column; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; min-height: 0;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="font-size: 12px; font-weight: 700; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">🪑 Catálogo de Mobiliario</h4>
+            <span id="paletteActiveBadge" style="font-size: 10px; background: #3b82f6; color: #fff; padding: 2px 6px; border-radius: 6px;">Clic para colocar</span>
+          </div>
+
+          <!-- Filtro de Categorías -->
+          <div style="display: flex; gap: 4px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 8px;">
+            <button class="cat-pill active" data-cat="all">Todos</button>
+            <button class="cat-pill" data-cat="desks">Puestos</button>
+            <button class="cat-pill" data-cat="chairs">Asientos</button>
+            <button class="cat-pill" data-cat="tech">Tech</button>
+            <button class="cat-pill" data-cat="storage">Archivo</button>
+            <button class="cat-pill" data-cat="decor">Bienestar</button>
+          </div>
+
+          <!-- Lista de muebles del catálogo -->
+          <div id="furnitureCatalogList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+            <!-- Generado dinámicamente por JS -->
+          </div>
+        </div>
+
+        <!-- Columna 2: Plano 2D Interactivo (Floor Plan) -->
+        <div style="flex: 1; display: flex; flex-direction: column; background: #070d19; border: 1px solid var(--border); border-radius: 12px; padding: 12px; position: relative; min-height: 0; align-items: center;">
+          
+          <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 11px; color: var(--text-muted); flex-shrink: 0;">
+            <span>🔷 Espacio 3D: 10m × 8m (Cuadrícula 1m)</span>
+            <span id="builderStatusNotice" style="color: #60a5fa; font-weight: 600;">Selecciona un mueble y haz clic en el plano para colocarlo</span>
+            <div style="display: flex; gap: 6px;">
+              <button id="toolRotateSelected" class="btn-primary" style="padding: 3px 8px; font-size: 11px; background: #475569;" title="Rotar mueble seleccionado 90°">🔄 Rotar (R)</button>
+              <button id="toolDeleteSelected" class="btn-delete" style="padding: 3px 8px; font-size: 11px;" title="Eliminar mueble seleccionado">🗑️ Quitar (Supr)</button>
+            </div>
+          </div>
+
+          <!-- Plano / Blueprint Container -->
+          <div id="blueprintContainer" style="flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #0b1329; border: 1px solid #1e293b; border-radius: 8px;">
+            <!-- Indicador mampara posterior -->
+            <div style="width: 82%; background: rgba(56, 189, 248, 0.22); border: 1px solid #38bdf8; color: #bae6fd; font-size: 10px; font-weight: 700; text-align: center; padding: 3px; border-radius: 4px; margin-bottom: 4px; letter-spacing: 0.05em;">
+              🪟 MAMPARA DE CRISTAL POSTERIOR (NORTE)
+            </div>
+
+            <!-- Cuadrícula interactiva de la oficina (10 cols x 8 rows) -->
+            <div id="officeGridBlueprint" style="display: grid; grid-template-columns: repeat(10, 1fr); grid-template-rows: repeat(8, 1fr); width: 480px; height: 384px; background: rgba(15, 23, 42, 0.85); border: 2px solid #3b82f6; border-radius: 6px; position: relative; box-shadow: 0 0 24px rgba(59, 130, 246, 0.2);">
+              <!-- Las 80 celdas interactivas se generarán por JS -->
+            </div>
+
+            <!-- Indicador acceso pasillo -->
+            <div style="width: 82%; background: rgba(16, 185, 129, 0.22); border: 1px solid #10b981; color: #a7f3d0; font-size: 10px; font-weight: 700; text-align: center; padding: 3px; border-radius: 4px; margin-top: 4px; letter-spacing: 0.05em;">
+              🚪 ACCESO DESDE EL PASILLO CORPORATIVO (SUR)
+            </div>
+          </div>
+
+          <!-- Barra de ayuda inferior -->
+          <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 11px; color: #94a3b8; flex-shrink: 0;">
+            <span>💡 <strong>Tip:</strong> Puedes seleccionar cualquier mueble colocado en el plano para moverlo o rotarlo 90°.</span>
+            <span id="gridCoordsDisplay" style="font-family: monospace; color: #38bdf8;">Posición: X: 0m, Z: 0m</span>
+          </div>
+        </div>
+
+        <!-- Columna 3: Inspector y Resumen de Muebles Instalados -->
+        <div style="width: 270px; display: flex; flex-direction: column; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px; min-height: 0;">
+          <h4 style="font-size: 12px; font-weight: 700; color: #34d399; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">
+            📋 Mobiliario Instalado (<span id="placedCount">0</span>)
+          </h4>
+
+          <!-- Inspector del elemento seleccionado -->
+          <div id="selectedItemInspector" style="background: var(--bg-card); border: 1px solid #3b82f6; border-radius: 8px; padding: 10px; margin-bottom: 10px;">
+            <div style="font-size: 10px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Elemento Seleccionado</div>
+            <div id="inspectItemName" style="font-size: 13px; font-weight: bold; color: #fff; margin: 4px 0;">Ninguno</div>
+            <div style="display: flex; gap: 10px; font-size: 11px; color: #cbd5e1; margin-bottom: 8px;">
+              <span>X: <strong id="inspectItemX">0</strong>m</span>
+              <span>Z: <strong id="inspectItemZ">0</strong>m</span>
+              <span>Rot: <strong id="inspectItemRot">0°</strong></span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button id="inspectRotateBtn" class="btn-primary" style="flex: 1; padding: 5px; font-size: 11px; background: #3b82f6;">🔄 Rotar</button>
+              <button id="inspectDeleteBtn" class="btn-delete" style="flex: 1; padding: 5px; font-size: 11px;">🗑️ Quitar</button>
+            </div>
+          </div>
+
+          <!-- Lista de muebles en el inventario de la oficina -->
+          <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">Inventario de la Oficina:</div>
+          <div id="placedFurnitureList" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+            <!-- Items colocados listados con botón quitar -->
+          </div>
+
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 11px; color: #94a3b8; line-height: 1.4;">
+            🛡️ <strong>Colisiones 3D Activas:</strong> Todos los puestos, estantes y sofás bloquean el paso físico del avatar para máxima inmersión.
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 

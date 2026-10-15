@@ -205,10 +205,20 @@ const whiteFurnitureMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roug
 const counterWoodMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.4 }); // Madera nogal mostrador
 const cafeteriaGreenMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4 }); // Mueble verde cafetería
 
+// Materiales Especiales para Mobiliario Personalizado según Perfil
+const mahoganyWoodMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.35 }); // Caoba noble
+const techGraphiteMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.3 }); // Grafito tech
+const lightWoodMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.45 }); // Roble claro
+const goldTrophyMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 }); // Oro trofeo
+const serverMetalMat = new THREE.MeshStandardMaterial({ color: 0x09090b, roughness: 0.2, metalness: 0.7 }); // Metal rack servidores
+const waterJugMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, roughness: 0.1 }); // Botellón agua
+const plantLeafMat = new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.35 }); // Hojas verdes
+
 // ----------------------------------------------------
 // SISTEMA DE COLISIONES SÓLIDAS 2D/3D (AABB & OBSTÁCULOS)
 // ----------------------------------------------------
 const officeColliders = [];
+let dynamicOfficeColliders = [];
 
 function registerCollider(minX, maxX, minZ, maxZ) {
   officeColliders.push({ minX, maxX, minZ, maxZ });
@@ -218,6 +228,17 @@ function registerBoxCollider(centerX, centerZ, widthX, depthZ) {
   const halfW = widthX / 2;
   const halfD = depthZ / 2;
   registerCollider(centerX - halfW, centerX + halfW, centerZ - halfD, centerZ + halfD);
+}
+
+function registerDynamicBoxCollider(centerX, centerZ, widthX, depthZ) {
+  const halfW = widthX / 2;
+  const halfD = depthZ / 2;
+  dynamicOfficeColliders.push({
+    minX: centerX - halfW,
+    maxX: centerX + halfW,
+    minZ: centerZ - halfD,
+    maxZ: centerZ + halfD
+  });
 }
 
 // Constructor de Mamparas de Cristal Templado con Marcos de Aluminio
@@ -559,7 +580,516 @@ createOfficePlant(-14, -12);
 createOfficePlant(14, -12);
 
 // ----------------------------------------------------
-// NPCS 3D CON CARAS REALES Y TEXTURAS
+// MOBILIARIO 3D MODULAR Y PLANTILLAS SEGÚN PERFIL DE TRABAJADOR
+// ----------------------------------------------------
+
+const FURNITURE_TEMPLATES_3D = {
+  gerencia: [
+    { type: 'executive_desk', x: 0, z: 0, rot: 0 },
+    { type: 'executive_chair', x: 0, z: -1.8, rot: 0 },
+    { type: 'executive_laptop_screen', x: 0, z: -0.4, rot: 0 },
+    { type: 'guest_chairs', x: 0, z: 1.8, rot: 180 },
+    { type: 'bookshelf', x: -3.4, z: -3.2, rot: 0 },
+    { type: 'office_plant', x: 3.8, z: -3.2, rot: 0 },
+    { type: 'visitor_armchair', x: 3.6, z: 2.2, rot: 270 }
+  ],
+  desarrollo: [
+    { type: 'tech_desk', x: 0, z: 0, rot: 0 },
+    { type: 'mesh_chair', x: 0, z: -1.8, rot: 0 },
+    { type: 'dual_monitor', x: 0, z: -0.4, rot: 0 },
+    { type: 'server_rack', x: -3.6, z: -3.0, rot: 0 },
+    { type: 'whiteboard', x: 3.8, z: -1.2, rot: 270 },
+    { type: 'coffee_station', x: -3.6, z: 2.2, rot: 90 },
+    { type: 'office_plant', x: 3.8, z: 2.8, rot: 0 }
+  ],
+  rrhh: [
+    { type: 'executive_desk', x: 0, z: 0, rot: 0 },
+    { type: 'executive_chair', x: 0, z: -1.8, rot: 0 },
+    { type: 'guest_chairs', x: 0, z: 1.8, rot: 180 },
+    { type: 'file_cabinet', x: -3.6, z: -3.0, rot: 0 },
+    { type: 'file_cabinet', x: -3.6, z: -1.2, rot: 0 },
+    { type: 'bookshelf', x: 3.4, z: -3.2, rot: 0 },
+    { type: 'water_cooler', x: 3.8, z: 2.4, rot: 0 }
+  ],
+  marketing: [
+    { type: 'creative_table', x: 0, z: 0, rot: 0 },
+    { type: 'mesh_chair', x: 0, z: -1.8, rot: 0 },
+    { type: 'ultrawide_monitor', x: 0, z: -0.4, rot: 0 },
+    { type: 'whiteboard', x: -3.8, z: -1.5, rot: 90 },
+    { type: 'lounge_sofa', x: 2.6, z: 2.0, rot: 270 },
+    { type: 'coffee_station', x: 3.6, z: -3.0, rot: 0 },
+    { type: 'office_plant', x: -3.8, z: 2.8, rot: 0 }
+  ],
+  finanzas: [
+    { type: 'tech_desk', x: 0, z: 0, rot: 0 },
+    { type: 'executive_chair', x: 0, z: -1.8, rot: 0 },
+    { type: 'dual_monitor', x: 0, z: -0.4, rot: 0 },
+    { type: 'safe_box', x: -3.6, z: -3.2, rot: 0 },
+    { type: 'file_cabinet', x: -3.6, z: -1.2, rot: 0 },
+    { type: 'guest_chairs', x: 0, z: 1.8, rot: 180 },
+    { type: 'bookshelf', x: 3.4, z: -3.2, rot: 0 },
+    { type: 'water_cooler', x: 3.8, z: 2.4, rot: 0 }
+  ],
+  recepcion: [
+    { type: 'reception_counter', x: 0, z: 0.4, rot: 0 },
+    { type: 'mesh_chair', x: 0, z: -1.2, rot: 0 },
+    { type: 'lounge_sofa', x: -2.6, z: 2.6, rot: 0 },
+    { type: 'coffee_station', x: 3.4, z: -2.8, rot: 0 },
+    { type: 'water_cooler', x: 3.6, z: 2.4, rot: 0 },
+    { type: 'office_plant', x: -3.8, z: -3.0, rot: 0 },
+    { type: 'office_plant', x: 3.8, z: 0, rot: 0 }
+  ]
+};
+
+// Generador Modular de Mobiliario 3D
+function buildFurniture3D(item, deptColor) {
+  const group = new THREE.Group();
+  const relX = item.x || 0;
+  const relZ = item.z || 0;
+  const rotDeg = item.rot || 0;
+  const rotY = (rotDeg * Math.PI) / 180;
+
+  group.position.set(relX, 0, relZ);
+  group.rotation.y = rotY;
+
+  let collider = null;
+
+  switch (item.type) {
+    case 'executive_desk': {
+      collider = { w: 6.2, d: 3.0 };
+      const deskBase = new THREE.Mesh(new THREE.BoxGeometry(6.0, 1.45, 2.8), mahoganyWoodMat);
+      deskBase.position.y = 0.725;
+      deskBase.castShadow = true;
+      group.add(deskBase);
+
+      const top = new THREE.Mesh(new THREE.BoxGeometry(6.2, 0.12, 3.0), mahoganyWoodMat);
+      top.position.y = 1.50;
+      top.castShadow = true;
+      group.add(top);
+
+      const mat = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.03, 1.8), darkLeatherMat);
+      mat.position.set(0, 1.57, 0.2);
+      group.add(mat);
+
+      const kb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.45), darkFrameMat);
+      kb.position.set(0, 1.59, 0.5);
+      group.add(kb);
+
+      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.26), darkFrameMat);
+      mouse.position.set(0.9, 1.59, 0.5);
+      group.add(mouse);
+      break;
+    }
+
+    case 'tech_desk': {
+      collider = { w: 5.4, d: 2.4 };
+      const top = new THREE.Mesh(new THREE.BoxGeometry(5.4, 0.12, 2.4), whiteFurnitureMat);
+      top.position.y = 1.45;
+      top.castShadow = true;
+      group.add(top);
+
+      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 2.2), darkFrameMat);
+      legL.position.set(-2.5, 0.7, 0);
+      legL.castShadow = true;
+      group.add(legL);
+
+      const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 2.2), darkFrameMat);
+      legR.position.set(2.5, 0.7, 0);
+      legR.castShadow = true;
+      group.add(legR);
+
+      const kb = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.45), darkFrameMat);
+      kb.position.set(0, 1.52, 0.4);
+      group.add(kb);
+
+      const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.26), darkFrameMat);
+      mouse.position.set(0.9, 1.52, 0.4);
+      group.add(mouse);
+      break;
+    }
+
+    case 'creative_table': {
+      collider = { w: 5.6, d: 2.6 };
+      const top = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.12, 2.6), lightWoodMat);
+      top.position.y = 1.45;
+      top.castShadow = true;
+      group.add(top);
+
+      const trestleL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 2.3), darkFrameMat);
+      trestleL.position.set(-2.4, 0.7, 0);
+      trestleL.castShadow = true;
+      group.add(trestleL);
+
+      const trestleR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.4, 2.3), darkFrameMat);
+      trestleR.position.set(2.4, 0.7, 0);
+      trestleR.castShadow = true;
+      group.add(trestleR);
+
+      // Tapete de corte azul/verde
+      const cutMat = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.03, 1.6), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 }));
+      cutMat.position.set(-0.6, 1.52, 0.1);
+      group.add(cutMat);
+
+      // Portalápices
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.4, 12), chromeMat);
+      cup.position.set(2.0, 1.7, 0.5);
+      group.add(cup);
+      break;
+    }
+
+    case 'reception_counter': {
+      collider = { w: 7.0, d: 2.2 };
+      const frontWall = new THREE.Mesh(new THREE.BoxGeometry(6.8, 1.8, 0.28), counterWoodMat);
+      frontWall.position.set(0, 0.9, 0.95);
+      frontWall.castShadow = true;
+      group.add(frontWall);
+
+      // Tira LED frontal iluminada con color del área
+      const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.08, 0.05), new THREE.MeshStandardMaterial({ color: deptColor, emissive: deptColor, emissiveIntensity: 0.8 }));
+      ledStrip.position.set(0, 0.4, 1.1);
+      group.add(ledStrip);
+
+      const topLedge = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.12, 0.8), whiteFurnitureMat);
+      topLedge.position.set(0, 1.85, 0.85);
+      topLedge.castShadow = true;
+      group.add(topLedge);
+
+      const deskBase = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.10, 1.6), whiteFurnitureMat);
+      deskBase.position.set(0, 1.15, -0.1);
+      group.add(deskBase);
+
+      const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.8, 1.8), counterWoodMat);
+      sideL.position.set(-3.3, 0.9, 0);
+      group.add(sideL);
+
+      const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.8, 1.8), counterWoodMat);
+      sideR.position.set(3.3, 0.9, 0);
+      group.add(sideR);
+      break;
+    }
+
+    case 'meeting_table': {
+      collider = { w: 3.4, d: 3.4 };
+      const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.12, 32), mahoganyWoodMat);
+      tableTop.position.y = 1.45;
+      tableTop.castShadow = true;
+      group.add(tableTop);
+
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.45, 1.4, 16), chromeMat);
+      col.position.y = 0.7;
+      group.add(col);
+
+      // 4 sillas alrededor
+      const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
+      angles.forEach(ang => {
+        const chair = createExecutiveChair(Math.sin(ang) * 2.2, Math.cos(ang) * 2.2, ang + Math.PI);
+        chair.scale.set(0.85, 0.85, 0.85);
+        group.add(chair);
+      });
+      break;
+    }
+
+    case 'executive_chair': {
+      collider = { w: 1.1, d: 1.1 };
+      group.add(createExecutiveChair(0, 0, 0));
+      break;
+    }
+
+    case 'mesh_chair': {
+      collider = { w: 1.0, d: 1.0 };
+      const meshChair = createExecutiveChair(0, 0, 0);
+      meshChair.scale.set(0.92, 0.92, 0.92);
+      group.add(meshChair);
+      break;
+    }
+
+    case 'guest_chairs': {
+      collider = { w: 3.2, d: 1.2 };
+      const ch1 = createExecutiveChair(-1.0, 0, 0);
+      ch1.scale.set(0.85, 0.85, 0.85);
+      group.add(ch1);
+
+      const ch2 = createExecutiveChair(1.0, 0, 0);
+      ch2.scale.set(0.85, 0.85, 0.85);
+      group.add(ch2);
+      break;
+    }
+
+    case 'lounge_sofa': {
+      collider = { w: 3.6, d: 1.5 };
+      group.add(createOfficeSofa(0, 0, 0));
+      break;
+    }
+
+    case 'visitor_armchair': {
+      collider = { w: 1.5, d: 1.4 };
+      const arm = createOfficeSofa(0, 0, 0);
+      arm.scale.set(0.48, 1, 1);
+      group.add(arm);
+      break;
+    }
+
+    case 'ultrawide_monitor': {
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 0.5, 12), chromeMat);
+      stand.position.set(0, 1.80, 0);
+      group.add(stand);
+
+      const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.25, 0.10), darkFrameMat);
+      screenFrame.position.set(0, 2.45, 0);
+      group.add(screenFrame);
+
+      const screen = new THREE.Mesh(
+        new THREE.BoxGeometry(3.05, 1.15, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.5 })
+      );
+      screen.position.set(0, 2.45, 0.05);
+      group.add(screen);
+      break;
+    }
+
+    case 'dual_monitor': {
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.28, 0.55, 12), chromeMat);
+      stand.position.set(0, 1.80, 0);
+      group.add(stand);
+
+      // Monitor 1 (Izquierdo en ángulo)
+      const m1 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.15, 0.08), darkFrameMat);
+      m1.position.set(-0.9, 2.45, 0.1);
+      m1.rotation.y = 0.2;
+      group.add(m1);
+
+      const s1 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.05, 0.04), new THREE.MeshStandardMaterial({ color: deptColor, emissive: deptColor, emissiveIntensity: 0.4 }));
+      s1.position.set(-0.9, 2.45, 0.15);
+      s1.rotation.y = 0.2;
+      group.add(s1);
+
+      // Monitor 2 (Derecho en ángulo)
+      const m2 = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.15, 0.08), darkFrameMat);
+      m2.position.set(0.9, 2.45, 0.1);
+      m2.rotation.y = -0.2;
+      group.add(m2);
+
+      const s2 = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.05, 0.04), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.4 }));
+      s2.position.set(0.9, 2.45, 0.15);
+      s2.rotation.y = -0.2;
+      group.add(s2);
+      break;
+    }
+
+    case 'executive_laptop_screen': {
+      // Monitor principal
+      const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, 0.5, 12), chromeMat);
+      stand.position.set(-0.6, 1.80, 0);
+      group.add(stand);
+
+      const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.3, 0.10), darkFrameMat);
+      screenFrame.position.set(-0.6, 2.45, 0);
+      group.add(screenFrame);
+
+      const screen = new THREE.Mesh(new THREE.BoxGeometry(2.05, 1.15, 0.05), new THREE.MeshStandardMaterial({ color: deptColor, emissive: deptColor, emissiveIntensity: 0.4 }));
+      screen.position.set(-0.6, 2.45, 0.05);
+      group.add(screen);
+
+      // Portátil abierto a un lado
+      const laptopBase = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.04, 0.65), chromeMat);
+      laptopBase.position.set(1.1, 1.58, 0.2);
+      group.add(laptopBase);
+
+      const laptopScreen = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.03), darkFrameMat);
+      laptopScreen.position.set(1.1, 1.86, -0.08);
+      laptopScreen.rotation.x = -0.25;
+      group.add(laptopScreen);
+      break;
+    }
+
+    case 'server_rack': {
+      collider = { w: 1.6, d: 1.4 };
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.6, 3.4, 1.4), serverMetalMat);
+      frame.position.y = 1.7;
+      frame.castShadow = true;
+      group.add(frame);
+
+      // Puerta de cristal frontal
+      const door = new THREE.Mesh(new THREE.BoxGeometry(1.4, 3.1, 0.08), glassMat);
+      door.position.set(0, 1.7, 0.72);
+      group.add(door);
+
+      // LEDs frontales
+      for (let i = 0; i < 6; i++) {
+        const led = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.02), new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x06b6d4 : 0x10b981, emissive: i % 2 === 0 ? 0x06b6d4 : 0x10b981, emissiveIntensity: 1.0 }));
+        led.position.set(-0.5 + (i * 0.2), 2.8 - (i * 0.3), 0.74);
+        group.add(led);
+      }
+      break;
+    }
+
+    case 'smart_tv': {
+      const tvFrame = new THREE.Mesh(new THREE.BoxGeometry(4.0, 2.3, 0.12), darkFrameMat);
+      tvFrame.position.y = 2.4;
+      group.add(tvFrame);
+
+      const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(3.85, 2.15, 0.06), new THREE.MeshStandardMaterial({ color: deptColor, emissive: deptColor, emissiveIntensity: 0.55 }));
+      tvScreen.position.set(0, 2.4, 0.06);
+      group.add(tvScreen);
+      break;
+    }
+
+    case 'file_cabinet': {
+      collider = { w: 1.4, d: 1.8 };
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.4, 2.4, 1.8), new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.35 }));
+      body.position.y = 1.2;
+      body.castShadow = true;
+      group.add(body);
+
+      // Tiradores de cajón
+      for (let i = 0; i < 3; i++) {
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.10), chromeMat);
+        handle.position.set(0, 0.6 + i * 0.7, 0.95);
+        group.add(handle);
+      }
+      break;
+    }
+
+    case 'bookshelf': {
+      collider = { w: 3.2, d: 1.2 };
+      const body = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.8, 1.0), counterWoodMat);
+      body.position.y = 1.9;
+      body.castShadow = true;
+      group.add(body);
+
+      // Estantes con libros y trofeo
+      const bookColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6];
+      for (let s = 0; s < 3; s++) {
+        for (let b = 0; b < 5; b++) {
+          const book = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.65), new THREE.MeshStandardMaterial({ color: bookColors[(s + b) % bookColors.length] }));
+          book.position.set(-1.0 + (b * 0.35), 1.0 + (s * 0.9), 0.2);
+          group.add(book);
+        }
+      }
+
+      // Trofeo dorado en el estante superior
+      const trophyBase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.4), darkFrameMat);
+      trophyBase.position.set(0.8, 2.85, 0.2);
+      group.add(trophyBase);
+
+      const trophyCup = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.12, 0.45, 12), goldTrophyMat);
+      trophyCup.position.set(0.8, 3.15, 0.2);
+      group.add(trophyCup);
+      break;
+    }
+
+    case 'whiteboard': {
+      collider = { w: 3.8, d: 0.6 };
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(3.8, 2.3, 0.12), chromeMat);
+      frame.position.y = 2.2;
+      group.add(frame);
+
+      const board = new THREE.Mesh(new THREE.BoxGeometry(3.6, 2.1, 0.06), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15 }));
+      board.position.set(0, 2.2, 0.04);
+      group.add(board);
+
+      // Notas Post-It de colores (Kanban)
+      const postItCols = [0xfef08a, 0xa7f3d0, 0xfbcfe8, 0xbae6fd];
+      for (let i = 0; i < 6; i++) {
+        const note = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.02), new THREE.MeshStandardMaterial({ color: postItCols[i % postItCols.length] }));
+        note.position.set(-1.2 + (i % 3) * 0.8, 2.4 - Math.floor(i / 3) * 0.6, 0.09);
+        group.add(note);
+      }
+      break;
+    }
+
+    case 'safe_box': {
+      collider = { w: 1.4, d: 1.4 };
+      const safe = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.8, 1.4), serverMetalMat);
+      safe.position.y = 0.9;
+      safe.castShadow = true;
+      group.add(safe);
+
+      const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.08, 16), chromeMat);
+      dial.rotation.x = Math.PI / 2;
+      dial.position.set(0, 1.1, 0.73);
+      group.add(dial);
+      break;
+    }
+
+    case 'water_cooler': {
+      collider = { w: 1.0, d: 1.0 };
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.6, 0.85), whiteFurnitureMat);
+      base.position.y = 0.8;
+      base.castShadow = true;
+      group.add(base);
+
+      // Botellón azul transparente
+      const jug = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.9, 16), waterJugMat);
+      jug.position.y = 2.05;
+      group.add(jug);
+
+      const jugCap = new THREE.Mesh(new THREE.SphereGeometry(0.35, 12, 12), waterJugMat);
+      jugCap.position.y = 2.50;
+      group.add(jugCap);
+      break;
+    }
+
+    case 'coffee_station': {
+      collider = { w: 1.8, d: 1.4 };
+      const credenza = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.3, 1.3), counterWoodMat);
+      credenza.position.y = 0.65;
+      credenza.castShadow = true;
+      group.add(credenza);
+
+      // Cafetera espresso
+      const machine = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.65, 0.55), chromeMat);
+      machine.position.set(-0.35, 1.62, 0);
+      group.add(machine);
+
+      // Taza
+      const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 0.22, 12), whiteFurnitureMat);
+      cup.position.set(0.4, 1.41, 0.2);
+      group.add(cup);
+      break;
+    }
+
+    case 'office_plant': {
+      collider = { w: 1.2, d: 1.2 };
+      const pot = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.3, 1.2), whiteFurnitureMat);
+      pot.position.y = 0.65;
+      pot.castShadow = true;
+      group.add(pot);
+
+      for (let i = 0; i < 5; i++) {
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 8), plantLeafMat);
+        leaf.scale.set(0.75, 1.8, 0.45);
+        leaf.position.set(Math.sin(i * 1.25) * 0.4, 1.9 + i * 0.2, Math.cos(i * 1.25) * 0.4);
+        leaf.rotation.y = i * 0.8;
+        group.add(leaf);
+      }
+      break;
+    }
+
+    case 'diploma_wall': {
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.4, 0.08), goldTrophyMat);
+      frame.position.y = 2.3;
+      group.add(frame);
+
+      const paper = new THREE.Mesh(new THREE.BoxGeometry(1.85, 1.25, 0.06), new THREE.MeshStandardMaterial({ color: 0xfef9c3, roughness: 0.3 }));
+      paper.position.set(0, 2.3, 0.03);
+      group.add(paper);
+      break;
+    }
+
+    default: {
+      collider = { w: 2.0, d: 2.0 };
+      const placeholder = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.2, 2.0), whiteFurnitureMat);
+      placeholder.position.y = 0.6;
+      group.add(placeholder);
+    }
+  }
+
+  return { group, collider };
+}
+
+// ----------------------------------------------------
+// NPCS 3D Y CONSTRUCCIÓN DE OFICINAS PERSONALIZADAS
 // ----------------------------------------------------
 const textureLoader = new THREE.TextureLoader();
 let npcMeshes = [];
@@ -573,14 +1103,16 @@ function buildNpcWorld(npcs) {
   npcMeshes = [];
   officeNpcs = npcs;
 
+  // Limpiar colisionadores dinámicos de las oficinas
+  dynamicOfficeColliders = [];
+
   npcs.forEach((npc, index) => {
     const color = (npc.color && typeof npc.color === 'string') ? npc.color : '#3B82F6';
     const x = (typeof npc.x === 'number' && !isNaN(npc.x)) ? npc.x : 0;
     const z = (typeof npc.z === 'number' && !isNaN(npc.z)) ? npc.z : 0;
 
-    // Registrar colisión del escritorio (ancho 6.6, fondo 3.2) y mampara de cristal (ancho 9.8, fondo 0.5)
-    registerBoxCollider(x, z, 6.8, 3.4);
-    registerBoxCollider(x, z - 3.8, 9.8, 0.6);
+    // Registrar colisión sólida de la mampara de cristal posterior (ancho 9.8, fondo 0.6)
+    registerDynamicBoxCollider(x, z - 3.8, 9.8, 0.6);
 
     const stationGroup = new THREE.Group();
 
@@ -609,55 +1141,32 @@ function buildNpcWorld(npcs) {
     cubicleFrame.position.set(0, 3.8, -3.8);
     stationGroup.add(cubicleFrame);
 
-    // Escritorio Ejecutivo Moderno de Madera y Metal
-    const desk = new THREE.Mesh(
-      new THREE.BoxGeometry(6.4, 1.5, 3.0),
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
-    );
-    desk.position.set(0, 0.75, 0);
-    desk.castShadow = true;
-    stationGroup.add(desk);
+    // Obtener la lista de mobiliario: Si el usuario diseñó la oficina, usar sus muebles;
+    // de lo contrario, cargar la plantilla temática del perfil asignado.
+    const profile = npc.profile || 'gerencia';
+    let furnitureList = [];
+    if (Array.isArray(npc.furniture) && npc.furniture.length > 0) {
+      furnitureList = npc.furniture;
+    } else {
+      furnitureList = FURNITURE_TEMPLATES_3D[profile] || FURNITURE_TEMPLATES_3D.gerencia;
+    }
 
-    const deskTop = new THREE.Mesh(
-      new THREE.BoxGeometry(6.6, 0.12, 3.2),
-      whiteFurnitureMat
-    );
-    deskTop.position.set(0, 1.52, 0);
-    deskTop.castShadow = true;
-    stationGroup.add(deskTop);
+    let hasReceptionCounter = false;
 
-    // Monitor Principal Corporativo de Alta Definición
-    const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.28, 0.5, 12), chromeMat);
-    stand.position.set(0, 1.80, -0.4);
-    stationGroup.add(stand);
+    // Construir cada mueble 3D y registrar sus colisiones físicas automáticas
+    furnitureList.forEach(furn => {
+      if (furn.type === 'reception_counter') hasReceptionCounter = true;
+      const { group: furnGroup, collider } = buildFurniture3D(furn, color);
+      stationGroup.add(furnGroup);
 
-    const monitorFrame = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.4, 0.12), darkFrameMat);
-    monitorFrame.position.set(0, 2.45, -0.4);
-    stationGroup.add(monitorFrame);
-
-    const screen = new THREE.Mesh(
-      new THREE.BoxGeometry(2.2, 1.25, 0.06),
-      new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.45 })
-    );
-    screen.position.set(0, 2.45, -0.34);
-    stationGroup.add(screen);
-
-    // Teclado y Mouse
-    const keyboard = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.04, 0.45), darkFrameMat);
-    keyboard.position.set(0, 1.60, 0.3);
-    stationGroup.add(keyboard);
-
-    const mouse = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 0.28), darkFrameMat);
-    mouse.position.set(0.9, 1.60, 0.3);
-    stationGroup.add(mouse);
-
-    // Silla Ejecutiva detrás del escritorio
-    stationGroup.add(createExecutiveChair(0, -1.7, 0));
-
-    // Archivador / Cajonera bajo el escritorio
-    const cabinet = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.2, 2.2), whiteFurnitureMat);
-    cabinet.position.set(2.2, 0.60, 0);
-    stationGroup.add(cabinet);
+      if (collider) {
+        const rot = furn.rot || 0;
+        const isSwapped = (rot === 90 || rot === 270);
+        const effW = isSwapped ? collider.d : collider.w;
+        const effD = isSwapped ? collider.w : collider.d;
+        registerDynamicBoxCollider(x + (furn.x || 0), z + (furn.z || 0), effW, effD);
+      }
+    });
 
     // NPC Modelo Humanoide Ejecutivo Corporativo
     const nameLower = (npc.name || '').toLowerCase();
@@ -667,14 +1176,17 @@ function buildNpcWorld(npcs) {
       role: npc.role,
       style: isFemale ? 'executive_female' : 'executive_male'
     });
-    npcAvatar.position.set(0, 0, -1.8);
+
+    // Ubicar al líder detrás de su puesto de trabajo
+    const npcZ = hasReceptionCounter ? -1.2 : -1.8;
+    npcAvatar.position.set(0, 0, npcZ);
     stationGroup.add(npcAvatar);
 
     stationGroup.position.set(x, 0, z);
     scene.add(stationGroup);
 
     npcMeshes.push({
-      npcData: { ...npc, x, z, color },
+      npcData: { ...npc, x, z, color, profile, furniture: furnitureList },
       mesh: stationGroup,
       npcModel: npcAvatar
     });
@@ -2377,6 +2889,13 @@ function updatePlayerPhysics(delta) {
       if (px + radius > c.minX && px - radius < c.maxX &&
           pz + radius > c.minZ && pz - radius < c.maxZ) {
         return c; // Retorna el obstáculo para poder destrabarse
+      }
+    }
+    for (let j = 0; j < dynamicOfficeColliders.length; j++) {
+      const dc = dynamicOfficeColliders[j];
+      if (px + radius > dc.minX && px - radius < dc.maxX &&
+          pz + radius > dc.minZ && pz - radius < dc.maxZ) {
+        return dc;
       }
     }
     return null;

@@ -378,7 +378,7 @@ app.post('/api/companies/:companyId/employees', async (req, res) => {
 // Agregar una nueva dependencia a la oficina 3D
 app.post('/api/companies/:companyId/departments', async (req, res) => {
   const { companyId } = req.params;
-  const { name, description, leaderName, leaderRole, color } = req.body;
+  const { name, description, leaderName, leaderRole, color, profile, furniture } = req.body;
 
   if (!name) return res.status(400).json({ error: 'Nombre de dependencia requerido' });
 
@@ -388,7 +388,9 @@ app.post('/api/companies/:companyId/departments', async (req, res) => {
       description: description || `Área de ${name.trim()}`,
       leaderName,
       leaderRole,
-      color
+      color,
+      profile,
+      furniture
     });
 
     const updatedCompany = await dbManager.getCompanyBySlug(companyId);
@@ -402,10 +404,10 @@ app.post('/api/companies/:companyId/departments', async (req, res) => {
   }
 });
 
-// Configurar / Editar qué hace y qué dice el líder de una dependencia
+// Configurar / Editar qué hace y qué dice el líder de una dependencia, perfil y mobiliario
 app.put('/api/companies/:companyId/departments/:deptId', async (req, res) => {
   const { companyId, deptId } = req.params;
-  const { name, leaderName, leaderRole, description, color } = req.body;
+  const { name, leaderName, leaderRole, description, color, profile, furniture } = req.body;
 
   try {
     const updated = await dbManager.updateDepartment(companyId, deptId, {
@@ -413,7 +415,9 @@ app.put('/api/companies/:companyId/departments/:deptId', async (req, res) => {
       leaderName,
       leaderRole,
       description,
-      color
+      color,
+      profile,
+      furniture
     });
 
     const updatedCompany = await dbManager.getCompanyBySlug(companyId);
@@ -423,7 +427,7 @@ app.put('/api/companies/:companyId/departments/:deptId', async (req, res) => {
 
     res.json({ success: true, department: updated });
   } catch (err) {
-    res.status(500).json({ error: 'Error actualizando dependencia y diálogo' });
+    res.status(500).json({ error: 'Error actualizando dependencia y mobiliario' });
   }
 });
 

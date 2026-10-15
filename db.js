@@ -141,6 +141,13 @@ const dbManager = {
               const calcX = Math.round(Math.cos(angle) * radius);
               const calcZ = Math.round(Math.sin(angle) * radius);
 
+              let parsedFurniture = [];
+              if (d.furniture) {
+                try {
+                  parsedFurniture = typeof d.furniture === 'string' ? JSON.parse(d.furniture) : d.furniture;
+                } catch (e) { parsedFurniture = []; }
+              }
+
               return {
                 id: d.id,
                 name: d.leaderName || `Líder de ${d.name}`,
@@ -150,7 +157,9 @@ const dbManager = {
                 x: (typeof d.posX === 'number' && !isNaN(d.posX) && d.posX !== 0) ? d.posX : calcX,
                 z: (typeof d.posZ === 'number' && !isNaN(d.posZ) && d.posZ !== 0) ? d.posZ : calcZ,
                 color: d.color || '#3B82F6',
-                info: d.description || `Área de ${d.name}. Conoce los procesos corporativos de nuestra dependencia.`
+                info: d.description || `Área de ${d.name}. Conoce los procesos corporativos de nuestra dependencia.`,
+                profile: d.profile || 'gerencia',
+                furniture: parsedFurniture
               };
             }),
             employees: empMap
@@ -162,7 +171,18 @@ const dbManager = {
     }
 
     const fallback = loadFallbackData();
-    return fallback.companies[slug] || null;
+    const comp = fallback.companies[slug];
+    if (comp) {
+      if (Array.isArray(comp.npcs)) {
+        comp.npcs = comp.npcs.map(npc => ({
+          ...npc,
+          profile: npc.profile || 'gerencia',
+          furniture: Array.isArray(npc.furniture) ? npc.furniture : []
+        }));
+      }
+      return comp;
+    }
+    return null;
   },
 
   // 3. Crear Empresa con Dependencias
@@ -350,7 +370,9 @@ const dbManager = {
               avatarUrl: deptData.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
               color: deptData.color || '#3B82F6',
               posX: posX,
-              posZ: posZ
+              posZ: posZ,
+              profile: deptData.profile || 'gerencia',
+              furniture: deptData.furniture ? (typeof deptData.furniture === 'string' ? deptData.furniture : JSON.stringify(deptData.furniture)) : '[]'
             }
           });
           return newDept;
@@ -366,6 +388,7 @@ const dbManager = {
       const index = (company.departments || []).length;
       const radius = 24;
       const angle = (index / (index + 1)) * Math.PI * 2 - Math.PI / 2;
+      const furnitureArr = Array.isArray(deptData.furniture) ? deptData.furniture : (typeof deptData.furniture === 'string' ? JSON.parse(deptData.furniture || '[]') : []);
       const newNpc = {
         id: `dept-${Date.now()}`,
         name: deptData.leaderName || `Líder de ${deptData.name}`,
@@ -375,9 +398,17 @@ const dbManager = {
         x: Math.round(Math.cos(angle) * radius),
         z: Math.round(Math.sin(angle) * radius),
         color: deptData.color || '#3B82F6',
-        info: deptData.description || `Área de ${deptData.name}`
+        info: deptData.description || `Área de ${deptData.name}`,
+        profile: deptData.profile || 'gerencia',
+        furniture: furnitureArr
       };
-      company.departments.push({ name: deptData.name, description: deptData.description });
+      company.departments.push({
+        id: newNpc.id,
+        name: deptData.name,
+        description: deptData.description,
+        profile: deptData.profile || 'gerencia',
+        furniture: furnitureArr
+      });
       company.npcs.push(newNpc);
       saveFallbackData(fallback);
       return newNpc;
@@ -399,7 +430,9 @@ const dbManager = {
               ...(updateData.leaderName ? { leaderName: updateData.leaderName.trim() } : {}),
               ...(updateData.leaderRole ? { leaderRole: updateData.leaderRole.trim() } : {}),
               ...(updateData.description ? { description: updateData.description.trim() } : {}),
-              ...(updateData.color ? { color: updateData.color } : {})
+              ...(updateData.color ? { color: updateData.color } : {}),
+              ...(updateData.profile ? { profile: updateData.profile } : {}),
+              ...(updateData.furniture !== undefined ? { furniture: typeof updateData.furniture === 'string' ? updateData.furniture : JSON.stringify(updateData.furniture) } : {})
             }
           });
           return updated;
@@ -419,6 +452,10 @@ const dbManager = {
         if (updateData.leaderRole) npc.role = updateData.leaderRole.trim();
         if (updateData.description) npc.info = updateData.description.trim();
         if (updateData.color) npc.color = updateData.color;
+        if (updateData.profile) npc.profile = updateData.profile;
+        if (updateData.furniture !== undefined) {
+          npc.furniture = typeof updateData.furniture === 'string' ? JSON.parse(updateData.furniture) : updateData.furniture;
+        }
       }
       const dept = (company.departments || []).find(d => d.id === departmentId || d.name === npc?.department);
       if (dept) {
@@ -427,6 +464,10 @@ const dbManager = {
         if (updateData.leaderRole) dept.leaderRole = updateData.leaderRole.trim();
         if (updateData.description) dept.description = updateData.description.trim();
         if (updateData.color) dept.color = updateData.color;
+        if (updateData.profile) dept.profile = updateData.profile;
+        if (updateData.furniture !== undefined) {
+          dept.furniture = typeof updateData.furniture === 'string' ? JSON.parse(updateData.furniture) : updateData.furniture;
+        }
       }
       saveFallbackData(fallback);
       return npc || dept;

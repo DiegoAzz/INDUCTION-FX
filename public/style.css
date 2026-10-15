@@ -1188,3 +1188,141 @@ body {
   margin-bottom: 16px;
   transform: rotate(-3deg);
 }
+
+/* ==================================================== */
+/* ESTUDIO DE DISEÑO Y DECORACIÓN DE OFICINAS 3D       */
+/* ==================================================== */
+
+.cat-pill {
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cat-pill:hover, .cat-pill.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+.furniture-catalog-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.furniture-catalog-card:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  transform: translateX(2px);
+}
+
+.furniture-catalog-card.selected {
+  border-color: #8b5cf6 !important;
+  background: rgba(139, 92, 246, 0.22) !important;
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.35);
+}
+
+.furniture-icon-badge {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: var(--bg-surface);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.grid-cell {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.1s ease;
+}
+
+.grid-cell:hover {
+  background: rgba(59, 130, 246, 0.3) !important;
+}
+
+.placed-item-token {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  z-index: 5;
+  user-select: none;
+  overflow: hidden;
+  text-align: center;
+}
+
+.placed-item-token:hover {
+  border-color: #38bdf8;
+  transform: scale(1.02);
+}
+
+.placed-item-token.selected {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.9) !important;
+  z-index: 10;
+}
+
+.placed-item-token .token-rot-indicator {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 1px 3px;
+  border-radius: 3px;
+  color: #fbbf24;
+}
+
+.placed-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.placed-list-row:hover {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.placed-list-row.selected {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
+
